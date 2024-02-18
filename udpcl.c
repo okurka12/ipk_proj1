@@ -27,23 +27,31 @@
 
 #include "ipk24chat.h"
 
+#define CSSA const struct sockaddr *
 
-int udp_send_data(const char *addr, uint16_t port, const char *data,
-                  unsigned int length) {
 
-    /* create struct sockaddr_in, initialize to zero, initialize domain */
-    struct sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
+int udp_fill_addrstruct(const char *addr, uint16_t port, struct sockaddr_in *s) {
+
+    /* initialize to zero, initialize domain */
+    memset(s, 0, sizeof(struct sockaddr_in));
+    s->sin_family = AF_INET;
 
     /* convert IP addres from text to binary */
-    if (inet_pton(AF_INET, addr, &server_addr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, addr, &s->sin_addr) <= 0) {
         perror("inet_pton error (invalid address?)");
         return 1;
     }
 
     /* convert from host byte order to network byte order */
-    server_addr.sin_port = htons(port);
+    s->sin_port = htons(port);
+}
+
+
+int udp_send_data(const char *addr, uint16_t port, const char *data,
+                  unsigned int length) {
+
+    struct sockaddr_in server_addr;
+    udp_fill_addrstruct(addr, port, &server_addr);
 
 
     /* create socket */
@@ -54,7 +62,7 @@ int udp_send_data(const char *addr, uint16_t port, const char *data,
     }
 
     /* server address but correct type */
-    const struct sockaddr *sa = (const struct sockaddr *)&server_addr;
+    CSSA sa = (CSSA)&server_addr;
 
     /* send the packet */
     ssize_t result = sendto(sockfd, data, length, 0, sa, sizeof(server_addr));
