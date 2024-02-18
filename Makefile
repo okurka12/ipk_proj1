@@ -1,7 +1,7 @@
 RESULT_BINARY=ipk24chat-client
-CC = gcc
-CFLAGS =
-LDFLAGS =
+CC=gcc
+CFLAGS=-Wall -Wextra -pedantic
+LDFLAGS=
 
 MODULES = udpcl.o
 
