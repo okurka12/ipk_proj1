@@ -27,9 +27,13 @@
 
 #include "ipk24chat.h"
 
+/* pointer type for `sendto` */
 #define CSSA const struct sockaddr *
 
-
+/**
+ * Private: fill `struct sockaddr_in` from `addr` and `port`
+ * used in `udp_send_data`
+*/
 int udp_fill_addrstruct(const char *addr, uint16_t port, struct sockaddr_in *s) {
 
     /* initialize to zero, initialize domain */
@@ -44,6 +48,8 @@ int udp_fill_addrstruct(const char *addr, uint16_t port, struct sockaddr_in *s) 
 
     /* convert from host byte order to network byte order */
     s->sin_port = htons(port);
+
+    return 0;
 }
 
 
@@ -51,8 +57,9 @@ int udp_send_data(const char *addr, uint16_t port, const char *data,
                   unsigned int length) {
 
     struct sockaddr_in server_addr;
-    udp_fill_addrstruct(addr, port, &server_addr);
-
+    if (udp_fill_addrstruct(addr, port, &server_addr)) {
+        return 1;
+    }
 
     /* create socket */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
