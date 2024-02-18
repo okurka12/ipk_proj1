@@ -25,22 +25,32 @@
 #include <netinet/in.h>  // struct sockaddr_in
 #include <arpa/inet.h>  // htons
 
-int udp_send_msg(const char *addr, uint16_t port, const char *msg) {
 
-    /* create struct sockaddr_in and initialize to zero */
+/**
+ * Sends AF_INET SOCK_DGRAM (IPv4 UDP) packet to `addr`
+ * @param addr IPv4 address (eg. 127.0.0.1)
+ * @param port port
+ * @param data payload
+ * @param length lengh of the data in bytes
+ * @return 0 on success else 1
+*/
+int udp_send_msg(const char *addr, uint16_t port, const char *data,
+                 unsigned int length) {
+
+    /* create struct sockaddr_in, initialize to zero, initialize domain */
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
 
     /* convert IP addres from text to binary */
     if (inet_pton(AF_INET, addr, &server_addr.sin_addr) <= 0) {
-        perror("inet_pton error");
+        perror("inet_pton error (invalid address?)");
         return 1;
     }
 
     /* convert from host byte order to network byte order */
     server_addr.sin_port = htons(port);
 
-    server_addr.sin_family = AF_INET;
 
     /* create socket */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -52,14 +62,14 @@ int udp_send_msg(const char *addr, uint16_t port, const char *msg) {
     /* server address but correct type */
     const struct sockaddr *sa = (const struct sockaddr *)&server_addr;
 
-    ssize_t result = sendto(sockfd, msg, strlen(msg), 0, sa, sizeof(server_addr));
+    /* send the packet */
+    ssize_t result = sendto(sockfd, data, length, 0, sa, sizeof(server_addr));
     if (result == -1) {
         perror("sendto failed");
         return 1;
     }
 
     close(sockfd);
-    printf("sent\n");
     return 0;
 }
 
@@ -68,5 +78,5 @@ int main() {
     char *msg = "Hello, I am client.\r\n";
     char *addr = "127.0.0.1";
     u_int16_t port = 4567;
-    udp_send_msg(addr, port, msg);
+    udp_send_msg(addr, port, msg, strlen(msg));
 }
