@@ -1,3 +1,15 @@
+##################
+##  Vit Pavlik  ##
+##   xpavli0a   ##
+##    251301    ##
+##              ##
+##  Created:    ##
+##  2024-02-18  ##
+##              ##
+##  Edited:     ##
+##  2024-02-18  ##
+##################
+
 RESULT_BINARY=ipk24chat-client
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic

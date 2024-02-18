@@ -37,4 +37,17 @@ typedef struct {
 
 } addr_t;
 
+/* message struct */
+typedef struct {
+
+    /* message type (CONFIRM, REPLY, AUTH, JOIN, MSG, ERR, BYE) */
+    uint8_t type;
+
+    /* message id */
+    uint16_t id;
+
+    /* message itself */
+    char *content;
+} msg_t;
+
 #endif  // ifndef _I_P_K_2_4_C_H_A_T_H_

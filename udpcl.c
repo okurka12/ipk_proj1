@@ -17,6 +17,7 @@
  *
  */
 
+#include <assert.h>  // static_assert
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>  // close
@@ -38,15 +39,20 @@
 
 /**
  * Private: fill `struct sockaddr_in` from `addr`
- * used in `udp_send_data`
- * @return a pointer to `struct sockaddr` (SSA) but it actually
- * points to `struct sockaddr_in` of size AS_SIZE
+ * used in `udp_send_msg`
+ * @return a pointer to `struct sockaddr` (SSA) (but it actually
+ * points to `struct sockaddr_in` of size AS_SIZE) on success, else NULL
  * @note dynamically allocated, needs to be freed
 */
 SSA *udp_get_addrstruct(addr_t *addr/*, struct sockaddr_in *s*/) {
 
     /* allocate + initialize to zero, initialize domain */
     struct sockaddr_in *s = calloc(sizeof(struct sockaddr_in), 1);
+    if (s == NULL) {
+        perror(MEMFAIL_MSG);
+        log(ERROR, MEMFAIL_MSG);
+        return NULL;
+    }
     s->sin_family = AF_INET;
 
     /* convert IP addres from text to binary */
@@ -99,24 +105,69 @@ int udp_create_socket() {
 }
 
 
-int udp_send_data(addr_t *addr, const char *data,
-                  unsigned int length) {
+/**
+ * Private: returns a pointer to memory where the entire msg contained
+ * in `msg` lies, returns length via `length`
+ * @note dynamically allocated, needs to be freed
+*/
+char *udp_render_message(msg_t *msg, unsigned int *length) {
+
+    /*        header  content                crlf */
+    *length = 1 + 2 + strlen(msg->content) + 2;
+    char *output = malloc(*length);
+    if (output == NULL) {
+        perror(MEMFAIL_MSG);
+        log(ERROR, MEMFAIL_MSG);
+    }
+
+    /* write msg type*/
+    output[0] = msg->type;
+
+    /* write msg id (gcc specific macros) */
+    if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) {
+        output[1] = ((char *)(&msg->id))[0];
+        output[2] = ((char *)(&msg->id))[1];
+    } else {
+        output[1] = ((char *)(&msg->id))[1];
+        output[2] = ((char *)(&msg->id))[0];
+    }
+
+    /* write msg content */
+    strcpy(output + 3, msg->content);
+
+    /* write crlf at the end */
+    strcpy(output + *length - 2, CRLF);
+
+    return output;
+}
+
+
+int udp_send_msg(addr_t *addr, msg_t *msg) {
 
     SSA *sa = udp_get_addrstruct(addr);
     int sockfd = udp_create_socket();
+    unsigned int length = 0;
+    char *data = udp_render_message(msg, &length);
 
     /* send the packet */
     udp_send(sockfd, sa, data, length);
 
     close(sockfd);
     free(sa);
+    free(data);
     return 0;
 }
 
 
 int main() {
-    char *msg = "Hello, I am client.\r\n";
-    char *addr = "127.0.0.1";
+
+    char *msg_text = "Hello, I am client.";
+
+    char *ip = "127.0.0.1";
     u_int16_t port = 4567;
-    udp_send_data(&(addr_t){.addr=addr, .port=port}, msg, strlen(msg));
+
+    addr_t addr = { .addr = ip, .port = port };
+    msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
+
+    udp_send_msg(&addr, &msg);
 }
