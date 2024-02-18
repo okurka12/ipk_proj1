@@ -14,16 +14,18 @@ FAMILY = socket.AF_INET
 # https://stackoverflow.com/questions/5815675/what-is-sock-dgram-and-sock-stream
 TYPE = socket.SOCK_DGRAM
 
-MSG_TYPES = [
-    "CONFIRM",
-    "REPLY",
-    "AUTH",
-    "JOIN",
-    "MSG",
-    "ERR",
-    "BYE",
-    "unknown"
-]
+MSG_TYPES = {
+    0x00: "CONFIRM",
+    0x01: "REPLY",
+    0x02: "AUTH",
+    0x03: "JOIN",
+    0x04: "MSG",
+    0xFE: "ERR",
+    0xFF: "BYE",
+}
+
+MSG_INV_TYPES = {value: key for key, value in MSG_TYPES.items()}
+
 
 
 def no_lf(s: str) -> str:
@@ -35,17 +37,32 @@ def no_lf(s: str) -> str:
 def recv_loop(sock: socket.socket) -> None:
 
     while True:
+
         # wait for the message
         response = sock.recv(2048)
-        message_type = int(response[0])
-        message_id = int.from_bytes(response[1:3], byteorder="big")
-        response = response[3:]
 
-        if message_type > len(MSG_TYPES) - 2:
-            message_type = len(MSG_TYPES) -1
-        print(f"TYPE: {MSG_TYPES[message_type]}")
-        print(f"ID: {message_id}")
-        print(f"'{no_lf(response.decode('utf-8'))}'")
+        # parse message
+        msgtype = int(response[0])
+        msgtype = MSG_TYPES[msgtype] if msgtype in MSG_TYPES else "unknown"
+        msgid = int.from_bytes(response[1:3], byteorder="big")
+
+        # ignore CONFIRM sent by self
+        if msgtype == "CONFIRM":
+            continue
+
+        # print on stdout
+        print(f"TYPE: {msgtype}")
+        print(f"ID: {msgid}")
+        print(f"'{no_lf(response[3:].decode('utf-8'))}'")
+
+        # send confirm
+        reply = bytearray(3)
+        reply[0] = MSG_INV_TYPES["CONFIRM"]
+        reply[1] = response[1]
+        reply[2] = response[2]
+        sock.sendto(reply, (UDP_IP, UDP_PORT))
+        print("sent confirm...")
+
 
 
 
