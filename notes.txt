@@ -1,0 +1,7 @@
+network byte-order -> big-endian
+
+ipk general project requirements
+https://git.fit.vutbr.cz/NESFIT/IPK-Projects-2024/src/branch/master/README.md
+
+assignment
+https://git.fit.vutbr.cz/NESFIT/IPK-Projects-2024/src/branch/master/Project%201#user-content-specification
