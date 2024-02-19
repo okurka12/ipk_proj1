@@ -7,7 +7,7 @@
 **  2024-02-18  **
 **              **
 **    Edited:   **
-**  2024-02-18  **
+**  2024-02-19  **
 *****************/
 
 /* Logging and other useful macros */
@@ -104,5 +104,7 @@
 /* returns true if two strings are not null and equal */
 #define are_equal(str1, str2) \
 ((str1) != NULL && (str2) != NULL && strcmp((str1), (str2)) == 0)
+
+#define not !
 
 #endif  // ifndef _U_T_I_L_S_H_
