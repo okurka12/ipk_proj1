@@ -7,7 +7,7 @@
 ##  2024-02-18  ##
 ##              ##
 ##  Edited:     ##
-##  2024-02-18  ##
+##  2024-02-19  ##
 ##################
 
 RESULT_BINARY=ipk24chat-client
@@ -15,12 +15,15 @@ CC=gcc
 CFLAGS=-Wall -Wextra -pedantic
 LDFLAGS=
 
-MODULES = udpcl.o
+MODULES = udpcl.o rwmsgid.o
 
 ALL: $(RESULT_BINARY)
 
-udpcl.o: udpcl.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+rwmsgid.o: rwmsgid.c rwmsgid.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(RESULT_BINARY): $(MODULES)
 	$(CC) $(LDFLAGS) -o $@ $^
