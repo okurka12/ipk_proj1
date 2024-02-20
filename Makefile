@@ -20,8 +20,12 @@ LOGLEVEL=DEBUG
 # ASAN=-fsanitize=address
 
 RESULT_BINARY=ipk24chat-client
+
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -g -DLOGLEVEL=$(LOGLEVEL) $(DNDEBUG) $(ASAN)
+
+CFLAGS=-Wall -Wextra -pedantic -g -std=c11 -DLOGLEVEL=$(LOGLEVEL) \
+$(DNDEBUG) $(ASAN)
+
 LDFLAGS=$(ASAN)
 
 MODULES = udpcl.o rwmsgid.o
@@ -40,3 +44,6 @@ $(RESULT_BINARY): $(MODULES)
 .PHONY: clean
 clean:
 	rm -rf *.o $(RESULT_BINARY)
+
+.PHONY: remake
+remake: clean $(RESULT_BINARY)
