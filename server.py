@@ -6,7 +6,9 @@
 
 import socket
 
-UDP_IP = "127.0.0.1"  # localhost
+# what address to listen on
+# BIND_IP = "127.0.0.1"  # localhost (loopback only)
+BIND_IP = "0.0.0.0"  # listen on every available network interface
 UDP_PORT = 4567  # default IPK24-CHAT port
 
 FAMILY = socket.AF_INET
@@ -39,7 +41,7 @@ def recv_loop(sock: socket.socket) -> None:
     while True:
 
         # wait for the message
-        response = sock.recv(2048)
+        response, retaddr = sock.recvfrom(2048)
 
         # parse message
         msgtype = int(response[0])
@@ -51,17 +53,18 @@ def recv_loop(sock: socket.socket) -> None:
             continue
 
         # print on stdout
+        print(f"MESSAGE from {retaddr[0]}:")
         print(f"TYPE: {msgtype}")
         print(f"ID: {msgid}")
         print(f"'{no_lf(response[3:].decode('utf-8'))}'")
+        print()
 
         # send confirm
         reply = bytearray(3)
         reply[0] = MSG_INV_TYPES["CONFIRM"]
         reply[1] = response[1]
         reply[2] = response[2]
-        sock.sendto(reply, (UDP_IP, UDP_PORT))
-        print("sent confirm...")
+        sock.sendto(reply, retaddr)
 
 
 
@@ -71,7 +74,8 @@ def main():
 
     # create socket and bind
     sock = socket.socket(FAMILY, TYPE)
-    sock.bind((UDP_IP, UDP_PORT))
+    sock.bind((BIND_IP, UDP_PORT))
+    print(f"started server on {BIND_IP} port {UDP_PORT}")
 
     try:
         recv_loop(sock)
