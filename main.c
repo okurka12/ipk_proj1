@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>  // free
 
 
 #include "ipk24chat.h"

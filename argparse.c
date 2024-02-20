@@ -39,9 +39,9 @@ char *strdup(const char *s) {
 }
 
 /**
- * Private: states for the argument parsing
+ * Private: states for the argument parsing (todo: remove)
 */
-enum parse_state { INIT, OPTION_T, OPTION_S, OPTION_D, OPTION_R, OPTION_H };
+// enum parse_state { INIT, OPTION_T, OPTION_S, OPTION_D, OPTION_R, OPTION_H };
 
 /**
  * returns a position in `s` where the first non-whitespace character is found
@@ -101,19 +101,18 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
     bool r_specified = false;
     bool h_specified = false;
 
-    enum parse_state state = INIT;
-
     int c;
     while ((c = getopt(argc, argv, "t:s:p:d:r:h")) != -1) {
         switch (c) {
 
         case 't':
             t_specified = true;
-            if (sscanf(optarg, "%u", &conf->timeout) != 1) {
-                fprintf(stderr, "invalid timeout '%s'\n", optarg);
+            if (not are_equal(optarg, "tcp") or not are_equal(optarg, "udp")) {
+                fprintf(stderr, "invalid transport protocol: %s\n", optarg);
                 return false;
             }
-            logf(INFO, "parsed timeout? %u", conf->timeout);
+            conf->tp = are_equal(optarg, "udp") ? UDP : TCP;
+            logf(INFO, "parsed transport protocol: %s\n", optarg);
             break;
 
         case 's':
@@ -128,11 +127,28 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
                 fprintf(stderr, "invalid port '%s'\n", optarg);
                 return false;
             }
-
+            logf(INFO, "parsed port: %hu", conf->port);
             break;
 
-        case 'k':
+        case 'd':
+            d_specified = true;
+            if (sscanf(optarg, "%u", &conf->timeout) != 1) {
+                fprintf(stderr, "invalid timeout: %s\n", optarg);
+            }
+            logf(INFO, "parsed timeout: %s\n", optarg);
+            break;
+        case 'r':
+            r_specified = true;
+            if (sscanf(optarg, "%u", &conf->retries) != 1) {
+                fprintf(stderr, "invalid number of retries: %s\n", optarg);
+            }
+            logf(INFO, "parsed number of retries: %u", conf->retries);
+            break;
 
+        case 'h':
+            h_specified = true;
+            conf->should_print_help = true;
+            log(INFO, "parsed -h option");
             break;
 
         default:
@@ -140,6 +156,15 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
         }
     }
 
-    log(ERROR, "not implemented yet");
-    return false;
+    (void)p_specified;
+    (void)d_specified;
+    (void)r_specified;
+    (void)h_specified;
+
+    if (not t_specified or not s_specified) {
+        log(ERROR, "server or transport protocol not specified");
+        return false;
+    }
+
+    return true;
 }
