@@ -178,26 +178,9 @@ int udp_wait_for_confirm(int sockfd, msg_t *msg) {
 }
 
 
-/**
- * Private: bind the socket to 0.0.0.0 port `port`
- * @return 0 on success else 1
-*/
-int udp_bind(int sockfd, uint16_t port) {
-    addr_t addr = { .addr = "0.0.0.0", .port = port };
-    SSA *localhost = udp_get_addrstruct(&addr);
-    if (bind(sockfd, localhost, AS_SIZE) != 0) {
-        perror("couldn't bind");
-        log(ERROR, "couldn't bind");
-        return 1;
-    }
-    return 0;
-}
-
-
-
 int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf) {
 
-    logf(DEBUG, "sending 0x%02hhx:%hu:'%s' to %s:%hu", msg->type, msg->id,
+    logf(INFO, "sending 0x%02hhx:%hu:'%s' to %s:%hu", msg->type, msg->id,
          msg->content, addr->addr, addr->port);
 
     /* process address */
@@ -208,9 +191,6 @@ int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf) {
     int sockfd = udp_create_socket(conf);
     if (sockfd == -1) return 1;
 
-    /* bind socket */
-    // if (udp_bind(sockfd, addr->port)) return 1;
-
     /* render message */
     unsigned int length = 0;
     char *data = udp_render_message(msg, &length);
@@ -218,6 +198,7 @@ int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf) {
     /* send the packet */
     udp_send(sockfd, sa, data, length);
 
+    /* wait for CONFIRM (no need to bind) */
     int confirmed = udp_wait_for_confirm(sockfd, msg);
     if (not confirmed) {
         logf(WARNING, "msg id %hu not confirmed", msg->id);
