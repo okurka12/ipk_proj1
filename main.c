@@ -29,11 +29,13 @@ int main(int argc, char *argv[]) {
     conf_t conf;
 
     if (not args_ok(argc, argv, &conf)) {
+        free(conf.addr);
         return ERR_BAD_ARG;
     }
     if (conf.should_print_help) {
         printf(USAGE LF);
         printf(HELP_TXT LF);
+        free(conf.addr);
         return 0;
     }
 
@@ -47,4 +49,6 @@ int main(int argc, char *argv[]) {
     char *msg_text = "Hello, I am client.";
     msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
     udp_send_msg(&addr, &msg, &conf);
+
+    free(conf.addr);
 }

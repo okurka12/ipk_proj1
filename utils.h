@@ -106,5 +106,7 @@
 ((str1) != NULL && (str2) != NULL && strcmp((str1), (str2)) == 0)
 
 #define not !
+#define and &&
+#define or ||
 
 #endif  // ifndef _U_T_I_L_S_H_
