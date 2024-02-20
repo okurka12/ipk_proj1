@@ -16,6 +16,7 @@
 */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifndef _I_P_K_2_4_C_H_A_T_H_
 #define _I_P_K_2_4_C_H_A_T_H_
@@ -76,5 +77,26 @@ typedef struct {
     /* message itself */
     char *content;
 } msg_t;
+
+/* chosen transport protocol */
+enum tp { TCP, UDP, NOT_SPECIFIED };
+
+/* configuration of current's execution */
+typedef struct {
+
+    /* transport protocol */
+    enum tp tp;
+
+    /* ip address or hostname */
+    char *addr;
+
+    uint16_t port;
+    unsigned int timeout;
+    unsigned int retries;
+
+    /* presence of -h option */
+    bool should_print_help;
+
+} conf_t;
 
 #endif  // ifndef _I_P_K_2_4_C_H_A_T_H_

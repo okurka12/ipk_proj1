@@ -29,14 +29,22 @@ bool is_opt(char *s) {
 
 
 /**
- * Checks and parses args (initializes `addr`)
+ * Checks and parses args (initializes `conf`)
  * @param argc argument count
  * @param argv arguments
- * @param addr address struct to initialize
- * @param help - set to true if there was -h option
+ * @param conf configuration structure to initialize
  * @return 1 if args are ok and 0 if they're not
 */
-bool args_ok(int argc, char *argv[], addr_t *addr, bool *help) {
+bool args_ok(int argc, char *argv[], conf_t *conf) {
+
+    /* default values */
+    conf->tp = NOT_SPECIFIED;
+    conf->addr = NULL;
+    conf->port = DEFAULT_PORT;
+    conf->timeout = 250;
+    conf->retries = DEFAULT_RETRIES;
+    conf->should_print_help = false;
+    
     if (argc < 2) {
         fprintf(stderr, "Too few arguments\n");
         fprintf(stderr, USAGE LF);
@@ -46,15 +54,15 @@ bool args_ok(int argc, char *argv[], addr_t *addr, bool *help) {
 
 int main(int argc, char *argv[]) {
 
-    addr_t addr = { .addr = NULL, .port = 0 };
-    bool should_print_help = false;
+    conf_t conf;
 
-    if (not args_ok(argc, argv, &addr, &should_print_help)) {
+    if (not args_ok(argc, argv, &conf)) {
         return ERR_BAD_ARG;
     }
-    if (should_print_help) {
+    if (conf.should_print_help) {
         printf(USAGE LF);
         printf(HELP_TXT LF);
+        return 0;
     }
 
     char *msg_text = "Hello, I am client.";
@@ -63,10 +71,10 @@ int main(int argc, char *argv[]) {
     // char *ip = "192.168.1.73";  // oslavany debian12vita local
     uint16_t port = 4567;
 
+    addr_t addr = { .addr = conf.addr, .port = conf.port };
     addr.addr = ip;
     addr.port = port;
     msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
-    udp_conf_t conf = { .r = 3, .t = 250 };
 
     udp_send_msg(&addr, &msg, &conf);
 }

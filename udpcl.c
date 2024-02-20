@@ -97,14 +97,14 @@ int udp_send(int sockfd, SSA *sa, const char *data, unsigned int length) {
  * @return socket file descriptor on succes, else -1
  * @note needs to be closed with `close()` from `unistd.h`
 */
-int udp_create_socket(udp_conf_t *conf) {
+int udp_create_socket(conf_t *conf) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1) {
         perror("socket creation failed");
         log(ERROR, "socket creation failed");
         return -1;
     }
-    struct timeval t = { .tv_usec = conf->t * 1000 };
+    struct timeval t = { .tv_usec = conf->timeout * 1000 };
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
     return sockfd;
 }
@@ -178,7 +178,7 @@ int udp_wait_for_confirm(int sockfd, msg_t *msg) {
 }
 
 
-int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf) {
+int udp_send_msg(addr_t *addr, msg_t *msg, conf_t *conf) {
 
     logf(INFO, "sending 0x%02hhx:%hu:'%s' to %s:%hu", msg->type, msg->id,
          msg->content, addr->addr, addr->port);

@@ -22,17 +22,6 @@
 #define CONFIRM_BUFSIZE 512
 
 
-/* configuration for the UDP socket*/
-typedef struct {
-
-    /* number of retries for confirmation */
-    unsigned int r;
-
-    /* miliseconds to wait for confirmation */
-    unsigned int t;
-
-} udp_conf_t;
-
 /**
  * Sends AF_INET SOCK_DGRAM (IPv4 UDP) packet to `addr`
  * @param addr
@@ -40,6 +29,6 @@ typedef struct {
  * @param conf
  * @return 0 on success else 1
 */
-int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf);
+int udp_send_msg(addr_t *addr, msg_t *msg, conf_t *conf);
 
 #endif  // ifndef _U_D_P_C_L_H_
