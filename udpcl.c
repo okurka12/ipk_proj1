@@ -7,7 +7,7 @@
 **  2024-02-18  **
 **              **
 **    Edited:   **
-**  2024-02-18  **
+**  2024-02-19  **
 *****************/
 
 /**
@@ -22,14 +22,17 @@
 #include <string.h>
 #include <unistd.h>  // close
 #include <stdlib.h>  // malloc
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>  // struct timeval
 #include <netinet/in.h>  // struct sockaddr_in
 #include <arpa/inet.h>  // htons
 
 #include "udpcl.h"
 #include "ipk24chat.h"
 #include "utils.h"
+#include "rwmsgid.h"
 
 /* addres struct for sendto */
 #define SSA struct sockaddr
@@ -94,13 +97,15 @@ int udp_send(int sockfd, SSA *sa, const char *data, unsigned int length) {
  * @return socket file descriptor on succes, else -1
  * @note needs to be closed with `close()` from `unistd.h`
 */
-int udp_create_socket() {
+int udp_create_socket(udp_conf_t *conf) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1) {
         perror("socket creation failed");
         log(ERROR, "socket creation failed");
         return -1;
     }
+    struct timeval t = { .tv_usec = conf->t * 1000 };
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
     return sockfd;
 }
 
@@ -109,6 +114,7 @@ int udp_create_socket() {
  * Private: returns a pointer to memory where the entire msg contained
  * in `msg` lies, returns length via `length`
  * @note dynamically allocated, needs to be freed
+ * @return pointer to rendered `msg` or NULL on failure
 */
 char *udp_render_message(msg_t *msg, unsigned int *length) {
 
@@ -118,19 +124,14 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
     if (output == NULL) {
         perror(MEMFAIL_MSG);
         log(ERROR, MEMFAIL_MSG);
+        return NULL;
     }
 
     /* write msg type*/
     output[0] = msg->type;
 
-    /* write msg id (gcc specific macros) */
-    if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) {
-        output[1] = ((char *)(&msg->id))[0];
-        output[2] = ((char *)(&msg->id))[1];
-    } else {
-        output[1] = ((char *)(&msg->id))[1];
-        output[2] = ((char *)(&msg->id))[0];
-    }
+    /* write msg id */
+    write_msgid(output + 1, msg->id);
 
     /* write msg content */
     strcpy(output + 3, msg->content);
@@ -142,15 +143,86 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
 }
 
 
-int udp_send_msg(addr_t *addr, msg_t *msg) {
+/**
+ * Private: waits for confirmation of `msg`
+ * @return 1 if message was confirmed, 0 if it was not (timed out)
+*/
+int udp_wait_for_confirm(int sockfd, msg_t *msg) {
+    char *reply = (char *)malloc(CONFIRM_BUFSIZE);
+    if (reply == NULL) {
+        perror(MEMFAIL_MSG);
+        log(ERROR, MEMFAIL_MSG);
+        return 0;
+    }
 
+    /* todo: what if this catches other udp packet? */
+    int received_bytes = recv(sockfd, reply, CONFIRM_BUFSIZE, 0);
+    if (received_bytes == -1) {
+        logf(DEBUG, "timed out (errno %d)", errno);  // EAGAIN - socket(7)
+        free(reply);
+        return 0;
+    }
+    logf(DEBUG, "received %d bytes", received_bytes);
+    uint8_t reply_type = reply[0];
+    uint16_t reply_msgid = read_msgid(reply + 1);
+
+    free(reply); reply = NULL;
+
+    if (reply_msgid != msg->id || reply_type != CONFIRM) {
+        logf(DEBUG, "message type=%x, id=%hu ignored", reply_type, reply_msgid);
+        return 0;
+    }
+    return 1;
+}
+
+
+/**
+ * Private: bind the socket to 0.0.0.0 port `port`
+ * @return 0 on success else 1
+*/
+int udp_bind(int sockfd, uint16_t port) {
+    addr_t addr = { .addr = "0.0.0.0", .port = port };
+    SSA *localhost = udp_get_addrstruct(&addr);
+    if (bind(sockfd, localhost, AS_SIZE) != 0) {
+        perror("couldn't bind");
+        log(ERROR, "couldn't bind");
+        return 1;
+    }
+    return 0;
+}
+
+
+
+int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf) {
+
+    logf(DEBUG, "sending 0x%02hhx:%hu:'%s' to %s:%hu", msg->type, msg->id,
+         msg->content, addr->addr, addr->port);
+
+    /* process address */
     SSA *sa = udp_get_addrstruct(addr);
-    int sockfd = udp_create_socket();
+    if (sa == NULL) return 1;
+
+    /* create socket */
+    int sockfd = udp_create_socket(conf);
+    if (sockfd == -1) return 1;
+
+    /* bind socket */
+    // if (udp_bind(sockfd, addr->port)) return 1;
+
+    /* render message */
     unsigned int length = 0;
     char *data = udp_render_message(msg, &length);
 
     /* send the packet */
     udp_send(sockfd, sa, data, length);
+
+    int confirmed = udp_wait_for_confirm(sockfd, msg);
+    if (not confirmed) {
+        logf(WARNING, "msg id %hu not confirmed", msg->id);
+        return 1;
+    } else {
+        logf(INFO, "msg id %hu confirmed", msg->id);
+    }
 
     close(sockfd);
     free(sa);
@@ -163,11 +235,13 @@ int main() {
 
     char *msg_text = "Hello, I am client.";
 
-    char *ip = "127.0.0.1";
+    char *ip = "127.0.0.1";  // localhost
+    // char *ip = "192.168.1.73";  // oslavany debian12vita local
     u_int16_t port = 4567;
 
     addr_t addr = { .addr = ip, .port = port };
     msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
+    udp_conf_t conf = { .r = 3, .t = 250 };
 
-    udp_send_msg(&addr, &msg);
+    udp_send_msg(&addr, &msg, &conf);
 }
