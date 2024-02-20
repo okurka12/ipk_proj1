@@ -7,7 +7,7 @@
 ##  2024-02-18  ##
 ##              ##
 ##  Edited:     ##
-##  2024-02-19  ##
+##  2024-02-20  ##
 ##################
 
 # log level (DEBUG, INFO, WARNING, ERROR, FATAL)
@@ -16,10 +16,13 @@ LOGLEVEL=DEBUG
 # uncomment this to disable all logging
 # DNDEBUG=-DNDEBUG
 
+# uncomment this to enable adress sanitizer
+# ASAN=-fsanitize=address
+
 RESULT_BINARY=ipk24chat-client
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -DLOGLEVEL=$(LOGLEVEL) $(DNDEBUG)
-LDFLAGS=
+CFLAGS=-Wall -Wextra -pedantic -g -DLOGLEVEL=$(LOGLEVEL) $(DNDEBUG) $(ASAN)
+LDFLAGS=$(ASAN)
 
 MODULES = udpcl.o rwmsgid.o
 
