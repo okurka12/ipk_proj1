@@ -118,8 +118,10 @@ int udp_create_socket(udp_conf_t *conf) {
 */
 char *udp_render_message(msg_t *msg, unsigned int *length) {
 
-    /*        header  content                crlf */
-    *length = 1 + 2 + strlen(msg->content) + 2;
+    /* note: strlen(CRLF) is 2 */
+
+    /*        header, content,               crlf */
+    *length = 1 + 2 + strlen(msg->content) + strlen(CRLF);
     char *output = malloc(*length);
     if (output == NULL) {
         perror(MEMFAIL_MSG);
@@ -137,7 +139,7 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
     strcpy(output + 3, msg->content);
 
     /* write crlf at the end */
-    strcpy(output + *length - 2, CRLF);
+    memcpy(output + *length - strlen(CRLF), CRLF, strlen(CRLF));
 
     return output;
 }
