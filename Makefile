@@ -10,9 +10,15 @@
 ##  2024-02-19  ##
 ##################
 
+# log level (DEBUG, INFO, WARNING, ERROR, FATAL)
+LOGLEVEL=DEBUG
+
+# uncomment this to disable all logging
+# DNDEBUG=-DNDEBUG
+
 RESULT_BINARY=ipk24chat-client
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic
+CFLAGS=-Wall -Wextra -pedantic -DLOGLEVEL=$(LOGLEVEL) $(DNDEBUG)
 LDFLAGS=
 
 MODULES = udpcl.o rwmsgid.o
