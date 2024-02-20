@@ -28,7 +28,7 @@ $(DNDEBUG) $(ASAN)
 
 LDFLAGS=$(ASAN)
 
-MODULES = udpcl.o rwmsgid.o
+MODULES = udpcl.o rwmsgid.o main.o
 
 ALL: $(RESULT_BINARY)
 
@@ -36,6 +36,9 @@ udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rwmsgid.o: rwmsgid.c rwmsgid.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+main.o: main.c ipk24chat.h udpcl.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(RESULT_BINARY): $(MODULES)

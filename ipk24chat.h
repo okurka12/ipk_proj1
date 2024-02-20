@@ -7,10 +7,13 @@
 **  2024-02-18  **
 **              **
 **    Edited:   **
-**  2024-02-18  **
+**  2024-02-20  **
 *****************/
 
-/* Constants and stuff for the IPK24CHAT protocol */
+/**
+ * Constants and stuff for the IPK24CHAT protocol
+ * (message type constants, structures, error codes)
+*/
 
 #include <stdint.h>
 
@@ -26,6 +29,30 @@
 #define BYE	    0xFF
 
 #define CRLF "\r\n"
+#define LF "\n"
+
+#define ERR_BAD_ARG 13
+
+#define DEFAULT_PORT 4567
+#define DEFAULT_TO 250
+#define DEFAULT_RETRIES 3
+
+#define STRSTR(x) #x
+#define STR(x) STRSTR(x)
+
+#define USAGE "Usage: ipk24chat-client -t tcp|udp -s ADDRESS [-p PORT] " \
+"[-d TIMEOUT] [-r RETRIES] [-h]"
+
+#define HELP_TXT "Options:" LF \
+"    -t           Transport protocol used" LF \
+"    -s           Server IP or hostname" LF \
+"    -p           Port (default is " STR(DEFAULT_PORT) ")" LF \
+"    -d           UDP confirmation timeout (ns) (default is " \
+                  STR(DEFAULT_TO) ")" LF \
+"    -r           Maximum number of UDP retransmissions (default is " \
+                  STR(DEFAULT_RETRIES) ")" LF \
+"    -h           Print help and exit"
+
 
 /* address type - contains address and port */
 typedef struct {

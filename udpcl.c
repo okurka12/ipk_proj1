@@ -213,18 +213,3 @@ int udp_send_msg(addr_t *addr, msg_t *msg, udp_conf_t *conf) {
     return 0;
 }
 
-
-int main() {
-
-    char *msg_text = "Hello, I am client.";
-
-    char *ip = "127.0.0.1";  // localhost
-    // char *ip = "192.168.1.73";  // oslavany debian12vita local
-    u_int16_t port = 4567;
-
-    addr_t addr = { .addr = ip, .port = port };
-    msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
-    udp_conf_t conf = { .r = 3, .t = 250 };
-
-    udp_send_msg(&addr, &msg, &conf);
-}
