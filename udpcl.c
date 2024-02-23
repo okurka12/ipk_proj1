@@ -13,7 +13,7 @@
 /**
  *
  * udpcl.c - UDP client
- * standalone for now
+ * functions necessary to perform communication on the UDP transport protocol
  *
  */
 
