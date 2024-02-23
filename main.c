@@ -18,14 +18,24 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>  // free
+#include <signal.h>  // register interrupt handler
 
 
 #include "ipk24chat.h"
 #include "udpcl.h"
 #include "utils.h"
 #include "argparse.h"
+#include "gexit.h"
+
+void handle_interrupt(int sig) {
+    (void)sig;
+    gexit(GE_TERMINATE, NULL);
+}
 
 int main(int argc, char *argv[]) {
+
+    /* register the interrupt handler */
+    signal(SIGINT, handle_interrupt);
 
     /* return code */
     int rc = 0;
