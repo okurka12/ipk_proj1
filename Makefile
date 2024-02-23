@@ -55,7 +55,10 @@ clean:
 remake: clean $(RESULT_BINARY)
 
 test_argparse.bin: test_argparse.c argparse.h argparse.o
-	$(CC) $(CFLAGS) -o test_argparse.bin $< argparse.o
+	$(CC) $(CFLAGS) -o $@ $< argparse.o
+
+test_sockopen.bin: test_sockopen.c utils.h
+	$(CC) $(CFLAGS) -o $@ $<
 
 test:
 	./test.sh
