@@ -8,3 +8,6 @@ https://git.fit.vutbr.cz/NESFIT/IPK-Projects-2024/src/branch/master/Project%201#
 
 sa_family
 https://www.gnu.org/software/libc/manual/html_node/Address-Formats.html
+
+nix development enviroment for c/c++
+nix develop "git+https://git.fit.vutbr.cz/NESFIT/dev-envs.git?dir=ipk#c"
