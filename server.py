@@ -5,6 +5,7 @@
 # https://wiki.python.org/moin/UdpCommunication
 
 import socket
+import time
 
 # what address to listen on
 # BIND_IP = "127.0.0.1"  # localhost (loopback only)
@@ -58,6 +59,9 @@ def recv_loop(sock: socket.socket) -> None:
         print(f"ID: {msgid}")
         print(f"'{no_lf(response[3:].decode('utf-8'))}'")
         print()
+
+        # sleep for 50 ms
+        time.sleep(0.1)
 
         # send confirm
         reply = bytearray(3)
