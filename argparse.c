@@ -107,7 +107,7 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
 
         case 't':
             t_specified = true;
-            if (not are_equal(optarg, "tcp") or not are_equal(optarg, "udp")) {
+            if (not are_equal(optarg, "tcp") and not are_equal(optarg, "udp")) {
                 fprintf(stderr, "invalid transport protocol: %s\n", optarg);
                 return false;
             }
