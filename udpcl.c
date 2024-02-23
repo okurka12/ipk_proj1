@@ -17,10 +17,8 @@
  *
  */
 
-/* todo: comment why its here */
-#include <assert.h>  // static_assert
-#include <stdio.h>
-#include <string.h>
+#include <stdio.h>  // perror
+#include <string.h>  // strcpy, memcpy
 #include <unistd.h>  // close
 #include <stdlib.h>  // malloc
 #include <errno.h>
