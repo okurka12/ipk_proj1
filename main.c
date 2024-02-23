@@ -44,12 +44,9 @@ int main(int argc, char *argv[]) {
     // char *ip = "127.0.0.1";  // localhost
     // char *ip = "192.168.1.73";  // oslavany debian12vita local
 
-    addr_t addr;
-    addr_from_conf(&addr, &conf);
-
     char *msg_text = "Hello, I am client.";
     msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
-    udp_send_msg(&addr, &msg, &conf);
+    udp_send_msg(&msg, &conf);
 
     free(conf.addr);
 }

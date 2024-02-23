@@ -29,6 +29,6 @@
  * @param conf
  * @return 0 on success else 1
 */
-int udp_send_msg(addr_t *addr, msg_t *msg, conf_t *conf);
+int udp_send_msg(msg_t *msg, conf_t *conf);
 
 #endif  // ifndef _U_D_P_C_L_H_

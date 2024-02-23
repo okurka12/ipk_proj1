@@ -47,7 +47,7 @@
  * points to `struct sockaddr_in` of size AS_SIZE) on success, else NULL
  * @note dynamically allocated, needs to be freed
 */
-SSA *udp_get_addrstruct(addr_t *addr/*, struct sockaddr_in *s*/) {
+SSA *udp_get_addrstruct(char *addr, uint16_t port) {
 
     /* allocate + initialize to zero, initialize domain */
     struct sockaddr_in *s = calloc(sizeof(struct sockaddr_in), 1);
@@ -59,14 +59,14 @@ SSA *udp_get_addrstruct(addr_t *addr/*, struct sockaddr_in *s*/) {
     s->sin_family = AF_INET;
 
     /* convert IP addres from text to binary */
-    if (inet_pton(AF_INET, addr->addr, &s->sin_addr) <= 0) {
+    if (inet_pton(AF_INET, addr, &s->sin_addr) <= 0) {
         perror("inet_pton error (invalid address?)");
-        logf(ERROR, "inet_pton error (invalid address '%s' ?)", addr->addr);
+        logf(ERROR, "inet_pton error (invalid address '%s' ?)", addr);
         return NULL;
     }
 
     /* convert from host byte order to network byte order */
-    s->sin_port = htons(addr->port);
+    s->sin_port = htons(port);
 
     return (SSA *)s;
 }
@@ -178,13 +178,13 @@ int udp_wait_for_confirm(int sockfd, msg_t *msg) {
 }
 
 
-int udp_send_msg(addr_t *addr, msg_t *msg, conf_t *conf) {
+int udp_send_msg(msg_t *msg, conf_t *conf) {
 
     logf(INFO, "sending 0x%02hhx:%hu:'%s' to %s:%hu", msg->type, msg->id,
-         msg->content, addr->addr, addr->port);
+         msg->content, conf->addr, conf->port);
 
     /* process address */
-    SSA *sa = udp_get_addrstruct(addr);
+    SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
     if (sa == NULL) return 1;
 
     /* create socket */

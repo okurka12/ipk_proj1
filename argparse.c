@@ -67,16 +67,6 @@ bool is_opt(char *s) {
     return s[0] == '-';
 }
 
-void addr_from_conf(addr_t *addr, const conf_t *conf) {
-    addr->addr = conf->addr;
-    addr->port = conf->port;
-}
-
-
-/**
- * processes single arg
-*/
-
 
 bool args_ok(int argc, char *argv[], conf_t *conf) {
 

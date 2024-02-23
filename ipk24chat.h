@@ -54,17 +54,6 @@
                   STR(DEFAULT_RETRIES) ")" LF \
 "    -h           Print help and exit"
 
-
-/* address type - contains address and port */
-typedef struct {
-
-    /* text form of an address (eg. 127.0.0.1) */
-    char *addr;
-
-    uint16_t port;
-
-} addr_t;
-
 /* message struct */
 typedef struct {
 

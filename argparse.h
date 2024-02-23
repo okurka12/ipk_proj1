@@ -29,9 +29,5 @@
 */
 bool args_ok(int argc, char *argv[], conf_t *conf);
 
-/**
- * initializes `addr` from `conf`
-*/
-void addr_from_conf(addr_t *addr, const conf_t *conf);
 
 #endif  // ifndef _A_R_G_P_A_R_S_E_H_
