@@ -49,7 +49,13 @@ $(RESULT_BINARY): $(MODULES)
 
 .PHONY: clean
 clean:
-	rm -rf *.o $(RESULT_BINARY)
+	rm -rf *.o *.bin $(RESULT_BINARY)
 
 .PHONY: remake
 remake: clean $(RESULT_BINARY)
+
+test_argparse.bin: test_argparse.c argparse.h argparse.o
+	$(CC) $(CFLAGS) -o test_argparse.bin $< argparse.o
+
+test:
+	./test.sh
