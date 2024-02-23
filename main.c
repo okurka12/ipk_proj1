@@ -27,6 +27,9 @@
 
 int main(int argc, char *argv[]) {
 
+    /* return code */
+    int rc = 0;
+
     conf_t conf;
 
     if (not args_ok(argc, argv, &conf)) {
@@ -40,13 +43,19 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-
-    // char *ip = "127.0.0.1";  // localhost
-    // char *ip = "192.168.1.73";  // oslavany debian12vita local
-
     char *msg_text = "Hello, I am client.";
     msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
-    udp_send_msg(&msg, &conf);
+
+    if (conf.tp == UDP) {
+        rc = udp_send_msg(&msg, &conf);
+        if(rc != 0) {
+            log(ERROR, "couldn't send message");
+        }
+    } else {
+        log(FATAL, "tcp version not implemented yet");
+    }
 
     free(conf.addr);
+
+    return rc;
 }

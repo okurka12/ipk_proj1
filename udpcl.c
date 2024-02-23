@@ -17,6 +17,7 @@
  *
  */
 
+/* todo: comment why its here */
 #include <assert.h>  // static_assert
 #include <stdio.h>
 #include <string.h>
@@ -220,9 +221,8 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
         logf(INFO, "confirmed in %u attempts", i);
         return 0;
     } else {
-        logf(WARNING, "couldn't confirm in %u attempts", i);
-        return 1;
+        logf(WARNING, "couldn't confirm msg %hu in %u attempts", msg->id, i);
+        return ERR_NOTCONF;
     }
-    return confirmed ? 0 : 1;
 }
 
