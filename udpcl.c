@@ -195,21 +195,34 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
     unsigned int length = 0;
     char *data = udp_render_message(msg, &length);
 
-    /* send the packet */
-    udp_send(sockfd, sa, data, length);
+    bool confirmed = false;
 
-    /* wait for CONFIRM (no need to bind) */
-    int confirmed = udp_wait_for_confirm(sockfd, msg);
-    if (not confirmed) {
-        logf(WARNING, "msg id %hu not confirmed", msg->id);
-        return 1;
-    } else {
-        logf(INFO, "msg id %hu confirmed", msg->id);
+    unsigned int i;
+    for (i = 0; i < conf->retries; i++) {
+        logf(DEBUG, "sending msg id %hu (attempt: %u)", msg->id, i + 1);
+
+        /* send the packet */
+        udp_send(sockfd, sa, data, length);
+
+        /* wait for CONFIRM (no need to bind) */
+        confirmed = udp_wait_for_confirm(sockfd, msg);
+        if (confirmed) {
+            break;
+        }
     }
 
+    /* cleanup */
     close(sockfd);
     free(sa);
     free(data);
-    return 0;
+
+    if (confirmed) {
+        logf(INFO, "confirmed in %u attempts", i);
+        return 0;
+    } else {
+        logf(WARNING, "couldn't confirm in %u attempts", i);
+        return 1;
+    }
+    return confirmed ? 0 : 1;
 }
 
