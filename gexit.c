@@ -33,9 +33,85 @@
 #include "gexit.h"
 #include "utils.h"
 
+/* how long should the array of the pointers be */
+#define NUM_PTRS 256
+
+/**
+ * Private: register a pointer to be freed if exiting via gexit
+ * @param ptr_arr pointer to array of pointers (void ***)
+ * @param len pointer to the length of the array
+ * @param p the pointer to register
+ * @note if allocation fails, does nothing, therefore the pointer is not
+ * registered and won't be freed if exiting via gexit (which is a risk i am
+ * willing to take)
+*/
+void gexit_regptr(void ***ptr_arr, unsigned int *len, void *p) {
+
+    if (p == NULL) {
+        return;
+    }
+
+    if (len == 0) {
+        *ptr_arr = malloc(sizeof(void *) * NUM_PTRS);
+        if (*ptr_arr == NULL) return;
+    }
+
+    for (unsigned int i = 0; i < *len; i++) {
+        if ((*ptr_arr)[i] == NULL) {
+            (*ptr_arr)[i] = p;
+            return;
+        }
+    }
+    /* if we got here, that means the array is not long enough */
+
+    unsigned int cursize = *len / NUM_PTRS;
+    unsigned int newsize = cursize + 1;
+    *ptr_arr = realloc(*ptr_arr, sizeof(void *) * newsize * NUM_PTRS);
+    if (*ptr_arr == NULL) {
+        return;
+    }
+    (*ptr_arr)[newsize * NUM_PTRS] = p;
+}
+
+
+/**
+ * Private: unregister a pointer
+ * @param ptr_arr pointer to array of pointers (void ***)
+ * @param len pointer to the length of the array
+ * @param p the pointer to unregister
+ *
+*/
+void gexit_unregptr(void ***ptrs, unsigned int *len, void *p) {
+    for (unsigned int i = 0; i < *len; i++) {
+        if ((*ptrs)[i] == p) {
+            (*ptrs)[i] = NULL;
+        }
+    }
+}
+
+
+/**
+ * Private: free all the registered pointers
+ * @param ptr_arr pointer to array of pointers (void ***)
+ * @param len pointer to the length of the array
+*/
+void gexit_free_all(void ***ptrs, unsigned int *len) {
+    for (unsigned int i = 0; i < *len; i++) {
+        if ((*ptrs)[i] != NULL) {
+            free((*ptrs)[i]);
+        }
+    }
+    free(*ptrs);
+}
+
+
 void gexit(enum gexit_statement statement, void *p) {
     static int sockfd = -1;
     static conf_t *confp = NULL;
+
+    /* array of the pointers to free */
+    static void **ptrs = NULL;
+    static unsigned int ptrs_len = 0;
 
     /* todo: remove this */
     (void)sockfd;
@@ -47,14 +123,39 @@ void gexit(enum gexit_statement statement, void *p) {
         confp = (conf_t *)p;
         break;
 
-    case GE_TERMINATE:
-        log(INFO, "the program was interrupted");
+    case GE_SET_FD:
+        sockfd = *((int *)p);
         break;
+
+    case GE_REGISTER_PTR:
+        gexit_regptr(&ptrs, &ptrs_len, p);
+        break;
+
+    case GE_UNREG_PTR:
+        gexit_unregptr(&ptrs, &ptrs_len, p);
+        break;
+
+    case GE_UNSET_FD:
+        sockfd = -1;
+        break;
+
+    case GE_UNSET_CONFP:
+        confp = NULL;
+        break;
+
+    case GE_TERMINATE:
+        log(INFO, "the program was interrupted, exiting");
+        int rc = 0;
+        /*todo:cleanup (done ig?)*/
+        if (sockfd != -1) close(sockfd);
+        gexit_free_all(&ptrs, &ptrs_len);
+        exit(rc);
 
     /* todo: all the other cases */
 
+    /* shouldn't happen */
     default:
-        /* todo*/
+        logf(ERROR, "gexit called with invalid statement: %d", statement);
         break;
     }
 }

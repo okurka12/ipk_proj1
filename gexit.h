@@ -36,7 +36,14 @@ enum gexit_statement {
     GE_UNSET_CONFP,
 
     /* call this statement when the program is terminated */
-    GE_TERMINATE
+    GE_TERMINATE,
+
+    /* register a pointer to be freed when exiting via gexit */
+    GE_REGISTER_PTR,
+
+    /* unregister a pointer registered with GE_REGISTER_PTR */
+    GE_UNREG_PTR
+
 };
 
 /**
