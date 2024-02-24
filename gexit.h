@@ -43,7 +43,10 @@ enum gexit_statement {
     GE_REGISTER_PTR,
 
     /* unregister a pointer registered with GE_REGISTER_PTR */
-    GE_UNREG_PTR
+    GE_UNREG_PTR,
+
+    /* free internal gexit resources (this wipes registered pointers) */
+    GE_FREE_RES
 
 };
 

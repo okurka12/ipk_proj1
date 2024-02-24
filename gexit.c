@@ -159,6 +159,11 @@ void gexit(enum gexit_statement statement, void *p) {
         gexit_free_all(&ptrs, &ptrs_len);
         exit(rc);
 
+    case GE_FREE_RES:
+        free(ptrs);
+        ptrs = NULL;
+        break;
+
     /* todo: all the other cases */
 
     /* shouldn't happen */

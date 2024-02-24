@@ -65,6 +65,8 @@ int main(int argc, char *argv[]) {
         log(FATAL, "tcp version not implemented yet");
     }
 
+    /* cleanup */
+    gexit(GE_FREE_RES, NULL);
     free(conf.addr);
 
     return rc;
