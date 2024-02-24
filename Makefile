@@ -38,7 +38,7 @@ udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h
 rwmsgid.o: rwmsgid.c rwmsgid.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-main.o: main.c ipk24chat.h udpcl.h utils.h argparse.h
+main.o: main.c ipk24chat.h udpcl.h utils.h argparse.h gexit.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 argparse.o: argparse.c argparse.h ipk24chat.h utils.h
