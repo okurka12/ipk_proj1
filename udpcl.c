@@ -20,7 +20,6 @@
 #include <stdio.h>  // perror
 #include <string.h>  // strcpy, memcpy
 #include <unistd.h>  // close
-#include <stdlib.h>  // malloc
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,6 +31,8 @@
 #include "ipk24chat.h"
 #include "utils.h"
 #include "rwmsgid.h"
+#include "gexit.h"
+#include "mmal.h"
 
 /* addres struct for sendto */
 #define SSA struct sockaddr
@@ -49,7 +50,7 @@
 SSA *udp_get_addrstruct(char *addr, uint16_t port) {
 
     /* allocate + initialize to zero, initialize domain */
-    struct sockaddr_in *s = calloc(sizeof(struct sockaddr_in), 1);
+    struct sockaddr_in *s = mcal(sizeof(struct sockaddr_in), 1);
     if (s == NULL) {
         perror(MEMFAIL_MSG);
         log(ERROR, MEMFAIL_MSG);
@@ -121,7 +122,7 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
 
     /*        header, content,               crlf */
     *length = 1 + 2 + strlen(msg->content) + strlen(CRLF);
-    char *output = malloc(*length);
+    char *output = mmal(*length);
     if (output == NULL) {
         perror(MEMFAIL_MSG);
         log(ERROR, MEMFAIL_MSG);
@@ -149,7 +150,7 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
  * @return 1 if message was confirmed, 0 if it was not (timed out)
 */
 int udp_wait_for_confirm(int sockfd, msg_t *msg) {
-    char *reply = (char *)malloc(CONFIRM_BUFSIZE);
+    char *reply = (char *)mmal(CONFIRM_BUFSIZE);
     if (reply == NULL) {
         perror(MEMFAIL_MSG);
         log(ERROR, MEMFAIL_MSG);
@@ -160,14 +161,14 @@ int udp_wait_for_confirm(int sockfd, msg_t *msg) {
     int received_bytes = recv(sockfd, reply, CONFIRM_BUFSIZE, 0);
     if (received_bytes == -1) {
         logf(DEBUG, "timed out (errno %d)", errno);  // EAGAIN - socket(7)
-        free(reply);
+        mfree(reply);
         return 0;
     }
     logf(DEBUG, "received %d bytes", received_bytes);
     uint8_t reply_type = reply[0];
     uint16_t reply_msgid = read_msgid(reply + 1);
 
-    free(reply); reply = NULL;
+    mfree(reply); reply = NULL;
 
     if (reply_msgid != msg->id || reply_type != CONFIRM) {
         logf(DEBUG, "message type=%x, id=%hu ignored", reply_type, reply_msgid);
@@ -189,6 +190,7 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
     /* create socket */
     int sockfd = udp_create_socket(conf);
     if (sockfd == -1) return 1;
+    gexit(GE_SET_FD, &sockfd);
 
     /* render message */
     unsigned int length = 0;
@@ -210,10 +212,13 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
         }
     }
 
+    getchar();
+
     /* cleanup */
+    gexit(GE_UNSET_FD, &sockfd);
     close(sockfd);
-    free(sa);
-    free(data);
+    mfree(sa);
+    mfree(data);
 
     if (confirmed) {
         logf(INFO, "confirmed in %u attempts", i);

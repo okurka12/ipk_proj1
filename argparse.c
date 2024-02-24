@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include <unistd.h>  // getopt
 #include <getopt.h>
@@ -26,10 +25,11 @@ extern char *optarg;
 #include "argparse.h"
 #include "ipk24chat.h"
 #include "utils.h"
+#include "mmal.h"
 
 char *strdup(const char *s) {
     unsigned int length = strlen(s) + 1;
-    char *output = malloc(length);
+    char *output = mmal(length);
     if (output == NULL) {
         log(ERROR, MEMFAIL_MSG);
         return NULL;
