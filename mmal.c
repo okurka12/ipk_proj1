@@ -26,6 +26,12 @@ void *mmal(size_t size) {
     return p;
 }
 
+void *mcal(size_t nmemb, size_t size) {
+    void *p = calloc(nmemb, size);
+    gexit(GE_REGISTER_PTR, p);
+    return p;
+}
+
 void mfree(void *p) {
     gexit(GE_UNREG_PTR, p);
     free(p);

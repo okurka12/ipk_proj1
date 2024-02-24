@@ -25,6 +25,9 @@
 /* like malloc, but also registers the pointer in the gexit module */
 void *mmal(size_t size);
 
+/* like calloc, but also registers the pointer in the gexit module */
+void *mcal(size_t nmemb, size_t size);
+
 /* like free, but also unregisters the pointer in the gexit module */
 void mfree(void *ptr);
 
