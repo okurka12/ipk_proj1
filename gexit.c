@@ -41,6 +41,7 @@
  * @param ptr_arr pointer to array of pointers (void ***)
  * @param len pointer to the length of the array
  * @param p the pointer to register
+ * @note can be called with `p` equal to NULL (in that case, it does nothing)
  * @note if allocation fails, does nothing, therefore the pointer is not
  * registered and won't be freed if exiting via gexit (which is a risk i am
  * willing to take)
@@ -51,26 +52,33 @@ void gexit_regptr(void ***ptr_arr, unsigned int *len, void *p) {
         return;
     }
 
+    /* case: first call to gexit_regptr - allocate a ptr_arr */
     if (len == 0) {
         *ptr_arr = malloc(sizeof(void *) * NUM_PTRS);
         if (*ptr_arr == NULL) return;
+        *len = NUM_PTRS;
+        for (unsigned int i = 0; i < *len; i++) {
+            (*ptr_arr)[i] = NULL;
+        }
+        (*ptr_arr)[0] = p;
     }
 
+    /* write `p` to the first empty position and return*/
     for (unsigned int i = 0; i < *len; i++) {
         if ((*ptr_arr)[i] == NULL) {
             (*ptr_arr)[i] = p;
             return;
         }
     }
-    /* if we got here, that means the array is not long enough */
 
-    unsigned int cursize = *len / NUM_PTRS;
-    unsigned int newsize = cursize + 1;
+    /* if we got here, that means the array is not long enough */
+    unsigned int original_size = *len / NUM_PTRS;
+    unsigned int newsize = original_size + 1;
     *ptr_arr = realloc(*ptr_arr, sizeof(void *) * newsize * NUM_PTRS);
     if (*ptr_arr == NULL) {
         return;
     }
-    (*ptr_arr)[newsize * NUM_PTRS] = p;
+    (*ptr_arr)[original_size * NUM_PTRS] = p;
 }
 
 
