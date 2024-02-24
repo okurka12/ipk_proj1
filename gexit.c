@@ -37,6 +37,17 @@
 #define NUM_PTRS 256
 
 /**
+ * Private: initialize all positions of `arr` to NULL
+ * @param arr the array to initialize
+ * @param len length of the array
+*/
+void gexit_init_arr(void **arr, unsigned int len) {
+    for (unsigned int i = 0; i < len; i++) {
+        arr[i] = NULL;
+    }
+}
+
+/**
  * Private: register a pointer to be freed if exiting via gexit
  * @param ptr_arr pointer to array of pointers (void ***)
  * @param len pointer to the length of the array
@@ -57,9 +68,7 @@ void gexit_regptr(void ***ptr_arr, unsigned int *len, void *p) {
         *ptr_arr = malloc(sizeof(void *) * NUM_PTRS);
         if (*ptr_arr == NULL) return;
         *len = NUM_PTRS;
-        for (unsigned int i = 0; i < *len; i++) {
-            (*ptr_arr)[i] = NULL;
-        }
+        gexit_init_arr(*ptr_arr, *len);
         (*ptr_arr)[0] = p;
     }
 
@@ -72,13 +81,16 @@ void gexit_regptr(void ***ptr_arr, unsigned int *len, void *p) {
     }
 
     /* if we got here, that means the array is not long enough */
-    unsigned int original_size = *len / NUM_PTRS;
-    unsigned int newsize = original_size + 1;
-    *ptr_arr = realloc(*ptr_arr, sizeof(void *) * newsize * NUM_PTRS);
+    *ptr_arr = realloc(*ptr_arr, sizeof(void *) * (*len + NUM_PTRS));
     if (*ptr_arr == NULL) {
         return;
     }
-    (*ptr_arr)[original_size * NUM_PTRS] = p;
+
+    /* init the new part of the array */
+    gexit_init_arr(*ptr_arr + *len, NUM_PTRS);
+
+    (*ptr_arr)[*len] = p;
+    *len += NUM_PTRS;
 }
 
 
