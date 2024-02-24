@@ -38,7 +38,8 @@ enum gexit_statement {
     /* call this statement when the program is terminated */
     GE_TERMINATE,
 
-    /* register a pointer to be freed when exiting via gexit */
+    /* register a pointer to be freed when exiting via gexit (note: you can
+    register a NULL pointer which has no effect) */
     GE_REGISTER_PTR,
 
     /* unregister a pointer registered with GE_REGISTER_PTR */
