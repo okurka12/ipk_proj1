@@ -38,10 +38,6 @@ char *strdup(const char *s) {
     return output;
 }
 
-/**
- * Private: states for the argument parsing (todo: remove)
-*/
-// enum parse_state { INIT, OPTION_T, OPTION_S, OPTION_D, OPTION_R, OPTION_H };
 
 /**
  * returns a position in `s` where the first non-whitespace character is found
