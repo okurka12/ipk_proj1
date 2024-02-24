@@ -34,6 +34,7 @@
 
 #define ERR_BAD_ARG 13
 #define ERR_NOTCONF 19
+#define ERR_INTERNAL 99
 
 #define DEFAULT_PORT 4567
 #define DEFAULT_TO 250
