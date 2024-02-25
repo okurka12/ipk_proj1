@@ -120,8 +120,8 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
 
     /* note: strlen(CRLF) is 2 */
 
-    /*        header, content,               crlf */
-    *length = 1 + 2 + strlen(msg->content) + strlen(CRLF);
+    /*        header, content,               null byte */
+    *length = 1 + 2 + strlen(msg->content) + 1;
     char *output = mmal(*length);
     if (output == NULL) {
         perror(MEMFAIL_MSG);
@@ -138,8 +138,8 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
     /* write msg content */
     strcpy(output + 3, msg->content);
 
-    /* write crlf at the end */
-    memcpy(output + *length - strlen(CRLF), CRLF, strlen(CRLF));
+    /* write null byte at the end */
+    output[*length - 1] = '\0';
 
     return output;
 }
@@ -211,8 +211,6 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
             break;
         }
     }
-
-    getchar();
 
     /* cleanup */
     gexit(GE_UNSET_FD, &sockfd);
