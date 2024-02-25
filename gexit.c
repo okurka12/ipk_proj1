@@ -15,6 +15,10 @@
  * implementation of the `gexit` - gracefully exit module
  * see gexit.h
  *
+ * @note malloc here is not null-checked because it doesn't affect the
+ * program's ability to function correctly, it just doesn't free memory
+ * (but only if it's being exited with SIGINT!)
+ *
  */
 
 #include <unistd.h>  // close
