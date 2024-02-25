@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
     conf_t conf;
 
     if (not args_ok(argc, argv, &conf)) {
+        log(ERROR, "bad arguments (or no memory?)");
         free(conf.addr);
         return ERR_BAD_ARG;
     }
