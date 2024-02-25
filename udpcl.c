@@ -146,8 +146,8 @@ int udp_wait_for_confirm(int sockfd, msg_t *msg) {
 
 int udp_send_msg(msg_t *msg, conf_t *conf) {
 
-    logf(INFO, "sending 0x%02hhx:%hu:'%s' to %s:%hu", msg->type, msg->id,
-         msg->content, conf->addr, conf->port);
+    logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
+         msg->id, conf->addr, conf->port);
 
     /* process address */
     SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
