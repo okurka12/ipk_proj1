@@ -87,6 +87,7 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
         *length = 1 + 2;
         allocate(output, *length);
         output[0] = msg->type;
+        write_msgid(output + 1, msg->id);
         break;
 
     default:
