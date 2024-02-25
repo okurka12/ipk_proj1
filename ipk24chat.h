@@ -109,4 +109,14 @@ typedef struct {
 
 } conf_t;
 
+/**
+ * Returns a string representing the message type if it exists, else an
+ * empty string
+ *
+ * Example: `mtype_str(0x04)` returns `"MSG"`
+ *
+ * @note implemented in `main.c`
+*/
+char *mtype_str(uint8_t mtype);
+
 #endif  // ifndef _I_P_K_2_4_C_H_A_T_H_

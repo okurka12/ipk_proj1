@@ -32,6 +32,29 @@ void handle_interrupt(int sig) {
     gexit(GE_TERMINATE, NULL);
 }
 
+char *mtype_str(uint8_t mtype) {
+    switch (mtype) {
+        case 0x00: return "CONFIRM";
+        case 0x01: return "REPLY";
+        case 0x02: return "AUTH";
+        case 0x03: return "JOIN";
+        case 0x04: return "MSG";
+        case 0xFE: return "ERR";
+        case 0xFF: return "BYE";
+    }
+    return "";
+}
+
+/* send message and check return code (put it into `int *rcp`) */
+#define smchrc(msgp, confp, rcp) \
+do { \
+    *(rcp) = udp_send_msg(&msg, &conf); \
+    if(*(rcp) != 0) { \
+        log(ERROR, "couldn't send message"); \
+    } \
+} while (0)
+
+
 int main(int argc, char *argv[]) {
 
     /* register the interrupt handler */
@@ -58,12 +81,8 @@ int main(int argc, char *argv[]) {
         .dname = "vita",
         .content = "Hello, I am client."
     };
-
     if (conf.tp == UDP) {
-        rc = udp_send_msg(&msg, &conf);
-        if(rc != 0) {
-            log(ERROR, "couldn't send message");
-        }
+        smchrc(&msg, &conf, &rc);
     } else {
         log(FATAL, "tcp version not implemented yet");
     }
