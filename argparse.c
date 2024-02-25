@@ -104,6 +104,7 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
         case 's':
             s_specified = true;
             conf->addr = strdup(optarg);
+            if (conf->addr == NULL) return false;
             logf(INFO, "parsed address: %s", conf->addr);
             break;
 
