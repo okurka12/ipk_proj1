@@ -16,6 +16,9 @@ UDP_PORT = 4567  # default IPK24-CHAT port
 
 FAMILY = socket.AF_INET
 
+# do we want to prin bloat?
+VERBOSE = False
+
 # https://stackoverflow.com/questions/5815675/what-is-sock-dgram-and-sock-stream
 TYPE = socket.SOCK_DGRAM
 
@@ -55,12 +58,12 @@ class Message:
             self.content = str_from_bytes(6, msg)
         elif msgt == "AUTH":
             self.username = str_from_bytes(3, msg)
-            self.dname = str_from_bytes(3 + len(self.username), msg)
+            self.dname = str_from_bytes(3 + len(self.username) + 1, msg)
             self.secret = str_from_bytes(3 + len(self.username) + 1 +
-                                         len(self.dname) + 1)
+                                         len(self.dname) + 1, msg)
         elif msgt == "JOIN":
             self.chid = str_from_bytes(3, msg)
-            self.dname = str_from_bytes(3 + len(self.dname) + 1, msg)
+            self.dname = str_from_bytes(3 + len(self.chid) + 1, msg)
         elif msgt == "MSG" or msgt == "ERR":
             self.dname = str_from_bytes(3, msg)
             self.content = str_from_bytes(3 + len(self.dname) + 1, msg)
@@ -68,19 +71,37 @@ class Message:
             pass
 
     def __repr__(self) -> str:
-        output = ""
-        if self.type == "MSG":
-            output += f"TYPE: {self.type}\n"
-            output += f"ID: {self.id}\n"
-            output += f"DISPLAY NAME: '{no_lf(self.dname)}'\n"
-            output += f"'{no_lf(self.content)}'"
-        else:
-            output += f"TYPE: {self.type}\n{self.binary}"
-        return output
+
+        delim: str = "\n"
+        output_list = []
+
+        if self.type is not None:
+            output_list.append(f"TYPE: {self.type}")
+        if self.id is not None:
+            output_list.append(f"ID: {self.id}")
+        if self.ref_msgid is not None:
+            output_list.append(f"REF ID: {self.ref_msgid}")
+        if self.username is not None:
+            output_list.append(f"USERNAME: '{no_lf(self.username)}'")
+        if self.dname is not None:
+            output_list.append(f"DISPLAY NAME: '{no_lf(self.dname)}'")
+        if self.secret is not None:
+            output_list.append(f"SECRET: '{no_lf(self.secret)}'")
+        if self.chid is not None:
+            output_list.append(f"CHANNEL ID: '{no_lf(self.chid)}'")
+        if self.result is not None:
+            output_list.append(f"RESULT: {self.result}")
+        if self.content is not None:
+            output_list.append(f"'{no_lf(self.content)}'")
+
+        output_list.append(str(self.binary))
+        
+        return delim.join(output_list)
 
     def __getattr__(self, attr) -> None:
-        print(f"ERROR: MSG:{hex(id(self))} has no attribute '{attr}' "
-              f"(mtype: {self.type})")
+        if VERBOSE:
+            print(f"ERROR: MSG:{hex(id(self))} has no attribute '{attr}' "
+                f"(mtype: {self.type})")
 
 
 def str_from_bytes(startpos: int, b: bytes) -> str:
@@ -112,16 +133,10 @@ def recv_loop(sock: socket.socket) -> None:
 
         msg = Message(response)
 
-        # ignore CONFIRM sent by self
-        # if msg.type == "CONFIRM":
-        #     continue
-
         # print on stdout
         print(f"MESSAGE from {retaddr[0]}:{retaddr[1]}:")
         print(msg)
         print()
-
-
 
         # sleep for 50 ms
         time.sleep(0.1)
