@@ -21,7 +21,7 @@
  * following construct enables testing for when malloc returns NULL
  * malloc itself doesnt return NULL, but mmal does
  */
-#define TEST_MALLOC_NULL
+// #define TEST_MALLOC_NULL
 #ifdef TEST_MALLOC_NULL
 
 #include <stdio.h>
