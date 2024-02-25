@@ -65,8 +65,27 @@ typedef struct {
     /* message id */
     uint16_t id;
 
-    /* message itself */
+    /* Username (for type AUTH) */
+    char *username;
+
+    /* DisplayName (for type AUTH, JOIN, MSG, ERR) */
+    char *dname;
+
+    /* Channel ID (for type JOIN) */
+    char chid;
+
+    /* Secret (for type AUTH) */
+    char *secret;
+
+    /* MessageContents (for type REPLY, MSG, ERR) */
     char *content;
+
+    /* Ref_MessageID (for type CONFIRM, REPLY)*/
+    uint16_t ref_msgid;
+
+    /* Result (for type REPLY) */
+    uint8_t result;
+
 } msg_t;
 
 /* chosen transport protocol */
