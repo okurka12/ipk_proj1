@@ -17,8 +17,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <stdlib.h>  // free
+#include <stdlib.h>  // free, srand
 #include <signal.h>  // register interrupt handler
+#include <time.h>  // something to put in srand
 
 
 #include "ipk24chat.h"
@@ -56,6 +57,10 @@ do { \
 
 
 int main(int argc, char *argv[]) {
+
+    /* needed for testing (see `mmal.c`) otherwise it has no effect */
+    srand(time(NULL));
+    logf(DEBUG, "random number: %d\n", rand());
 
     /* register the interrupt handler */
     signal(SIGINT, handle_interrupt);
