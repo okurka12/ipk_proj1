@@ -49,7 +49,7 @@ char *mtype_str(uint8_t mtype) {
 /* send message and check return code (put it into `int *rcp`) */
 #define smchrc(msgp, confp, rcp) \
 do { \
-    *(rcp) = udp_send_msg(&msg, &conf); \
+    *(rcp) = udp_send_msg(msgp, confp); \
     if(*(rcp) != 0) { \
         log(ERROR, "couldn't send message"); \
     } \
@@ -82,13 +82,28 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    msg_t msg = {
-        .type = MTYPE_MSG, .id = 1,
-        .dname = "vita",
-        .content = "Hello, I am client."
-    };
+    /* testing messages */
+    msg_t msg1 = { .type = MTYPE_CONFIRM, .ref_msgid = 12345 };
+    msg_t msg2 = { .type = MTYPE_REPLY, .id = 1, .result = 1,
+        .ref_msgid = 54321, .content = "toto je odpoved" };
+    msg_t msg3 = { .type = MTYPE_AUTH, .id = 2, .username = "vita123",
+        .dname = "vita", .secret = "asdfghjkl" };
+    msg_t msg4 = { .type = MTYPE_JOIN, .id = 3, .chid = "kanal_123",
+        .dname = "vitecek" };
+    msg_t msg5 = { .type = MTYPE_MSG, .id = 4, .dname = "vita",
+        .content = "Hello, I am client." };
+    msg_t msg6 = { .type = MTYPE_ERR, .id = 5, .dname = "vita",
+        .content = "Hello, I am client." };
+    msg_t msg7 = { .type = MTYPE_BYE, .id = 6 };
+
     if (conf.tp == UDP) {
-        smchrc(&msg, &conf, &rc);
+        smchrc(&msg1,  &conf, &rc);
+        smchrc(&msg2, &conf, &rc);
+        smchrc(&msg3, &conf, &rc);
+        smchrc(&msg4, &conf, &rc);
+        smchrc(&msg5, &conf, &rc);
+        smchrc(&msg6, &conf, &rc);
+        smchrc(&msg7, &conf, &rc);
     } else {
         log(FATAL, "tcp version not implemented yet");
     }
