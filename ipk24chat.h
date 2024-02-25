@@ -72,7 +72,7 @@ typedef struct {
     char *dname;
 
     /* Channel ID (for type JOIN) */
-    char chid;
+    char *chid;
 
     /* Secret (for type AUTH) */
     char *secret;
