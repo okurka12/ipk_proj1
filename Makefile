@@ -7,7 +7,7 @@
 ##  2024-02-18  ##
 ##              ##
 ##  Edited:     ##
-##  2024-02-24  ##
+##  2024-02-25  ##
 ##################
 
 # log level (DEBUG, INFO, WARNING, ERROR, FATAL)
@@ -30,11 +30,12 @@ $(DNDEBUG) $(ASAN)
 
 LDFLAGS=$(ASAN)
 
-MODULES = udpcl.o rwmsgid.o main.o argparse.o gexit.o mmal.o
+MODULES = udpcl.o rwmsgid.o main.o argparse.o gexit.o mmal.o udp_render.o
 
 ALL: $(RESULT_BINARY)
 
-udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h gexit.h mmal.h
+udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h gexit.h mmal.h \
+udp_render.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rwmsgid.o: rwmsgid.c rwmsgid.h
@@ -50,6 +51,9 @@ gexit.o: gexit.c ipk24chat.h gexit.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 mmal.o: mmal.c mmal.h gexit.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+udp_render.o: udp_render.c udp_render.h mmal.h ipk24chat.h rwmsgid.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(RESULT_BINARY): $(MODULES)

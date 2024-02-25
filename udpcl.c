@@ -7,7 +7,7 @@
 **  2024-02-18  **
 **              **
 **    Edited:   **
-**  2024-02-19  **
+**  2024-02-25  **
 *****************/
 
 /**
@@ -33,6 +33,7 @@
 #include "rwmsgid.h"
 #include "gexit.h"
 #include "mmal.h"
+#include "udp_render.h"
 
 /* addres struct for sendto */
 #define SSA struct sockaddr
@@ -107,41 +108,6 @@ int udp_create_socket(conf_t *conf) {
     struct timeval t = { .tv_usec = conf->timeout * 1000 };
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
     return sockfd;
-}
-
-
-/**
- * Private: returns a pointer to memory where the entire msg contained
- * in `msg` lies, returns length via `length`
- * @note dynamically allocated, needs to be freed
- * @return pointer to rendered `msg` or NULL on failure
-*/
-char *udp_render_message(msg_t *msg, unsigned int *length) {
-
-    /* note: strlen(CRLF) is 2 */
-
-    /*        header, content,               null byte */
-    *length = 1 + 2 + strlen(msg->content) + 1;
-    char *output = mmal(*length);
-    if (output == NULL) {
-        perror(MEMFAIL_MSG);
-        log(ERROR, MEMFAIL_MSG);
-        return NULL;
-    }
-
-    /* write msg type*/
-    output[0] = msg->type;
-
-    /* write msg id */
-    write_msgid(output + 1, msg->id);
-
-    /* write msg content */
-    strcpy(output + 3, msg->content);
-
-    /* write null byte at the end */
-    output[*length - 1] = '\0';
-
-    return output;
 }
 
 
