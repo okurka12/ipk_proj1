@@ -161,6 +161,7 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
     /* render message */
     unsigned int length = 0;
     char *data = udp_render_message(msg, &length);
+    if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
 
     bool confirmed = false;
 
