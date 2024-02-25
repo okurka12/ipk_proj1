@@ -24,13 +24,15 @@
 #define TEST_MALLOC_NULL
 #ifdef TEST_MALLOC_NULL
 
-#include <time.h>
+#include <stdio.h>
 
 /* a chance malloc returns NULL */
-#define TRESHOLD 0.5
+#define TRESHOLD 0.2
 
 /* returns NULL or `iden` with probability `TRESHOLD` */
-#define value(iden) (rand() < (int)(TRESHOLD*RAND_MAX) ? NULL : iden)
+#define value(iden) \
+(rand() < (int)(TRESHOLD*RAND_MAX) ? \
+(fprintf(stderr, "MMAL RETURNING NULL\n"), NULL) : iden)
 
 #else  // ifdef TEST_MALLOC_NULL
 
