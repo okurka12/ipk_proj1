@@ -55,11 +55,13 @@ char *udp_render_message(msg_t *msg, unsigned int *length) {
         break;
 
     case MTYPE_REPLY:
-        *length = 1 + 2 + strlen(msg->content) + 1;
+        *length = 1 + 2 + 1 + 2 + strlen(msg->content) + 1;
         allocate(output, *length);
         output[0] = msg->type;
         write_msgid(output + 1, msg->id);
-        strcpy(output + 3, msg->content);
+        output[3] = msg->result;
+        write_msgid(output + 4, msg->ref_msgid);
+        strcpy(output + 6, msg->content);
         break;
 
     case MTYPE_AUTH:
