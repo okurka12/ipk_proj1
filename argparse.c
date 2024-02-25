@@ -98,7 +98,7 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
                 return false;
             }
             conf->tp = are_equal(optarg, "udp") ? UDP : TCP;
-            logf(INFO, "parsed transport protocol: %s\n", optarg);
+            logf(INFO, "parsed transport protocol: %s", optarg);
             break;
 
         case 's':

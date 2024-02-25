@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
 
     /* needed for testing (see `mmal.c`) otherwise it has no effect */
     srand(time(NULL));
-    logf(DEBUG, "random number: %d\n", rand());
+    logf(DEBUG, "random number: %d", rand());
 
     /* register the interrupt handler */
     signal(SIGINT, handle_interrupt);
