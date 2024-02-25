@@ -25,6 +25,7 @@
  * @param argv arguments
  * @param conf configuration structure to initialize
  * @return true if args are ok and false if they're not
+ * (or if allocation fails)
  * @note allocates memory for conf->addr, that needs to be freed
 */
 bool args_ok(int argc, char *argv[], conf_t *conf);
