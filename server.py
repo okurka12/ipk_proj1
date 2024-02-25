@@ -40,60 +40,47 @@ class Message:
             MSG_TYPES[self.type] if self.type in MSG_TYPES else "unknown"
         self.id = int.from_bytes(msg[1:3], byteorder="big")
 
+        # binary form
+        self.binary = msg
+
         # message type
         msgt = self.type
 
         if   msgt == "CONFIRM":
-            pass
+            self.ref_msgid = self.id
+            del self.id
         elif msgt == "REPLY":
             self.result = int(msg[3])
             self.ref_msgid = int.from_bytes(msg[4:6], byteorder="big")
+            self.content = str_from_bytes(6, msg)
         elif msgt == "AUTH":
-            pass
+            self.username = str_from_bytes(3, msg)
+            self.dname = str_from_bytes(3 + len(self.username), msg)
+            self.secret = str_from_bytes(3 + len(self.username) + 1 +
+                                         len(self.dname) + 1)
         elif msgt == "JOIN":
-            pass
-        elif msgt == "MSG":
-            self.messagecontents = str_from_bytes(3, msg)
-        elif msgt == "ERR":
-            pass
+            self.chid = str_from_bytes(3, msg)
+            self.dname = str_from_bytes(3 + len(self.dname) + 1, msg)
+        elif msgt == "MSG" or msgt == "ERR":
+            self.dname = str_from_bytes(3, msg)
+            self.content = str_from_bytes(3 + len(self.dname) + 1, msg)
         elif msgt == "BYE":
             pass
-
-        # # REPLY
-        # self.result = 0
-        # self.ref_msgid = 0
-        # self.messagecontents = ""
-
-        # # AUTH
-        # self.username = ""
-        # self.displayname = ""
-        # self.secret = ""
-
-        # # JOIN
-        # self.channel_id = ""
-        # self.displayname = ""
-
-        # # MSG
-        # self.displayname = ""
-        # self.messagecontents = ""
-
-        # # ERR
-        # self.displayname = ""
-        # self.messagecontents = ""
-
-        # BYE
-        pass
 
     def __repr__(self) -> str:
         output = ""
         if self.type == "MSG":
             output += f"TYPE: {self.type}\n"
             output += f"ID: {self.id}\n"
-            output += f"'{no_lf(self.messagecontents)}'"
+            output += f"DISPLAY NAME: '{no_lf(self.dname)}'\n"
+            output += f"'{no_lf(self.content)}'"
         else:
-            output += f"TYPE: {self.type}\n ID: {self.id}"
+            output += f"TYPE: {self.type}\n{self.binary}"
         return output
 
+    def __getattr__(self, attr) -> None:
+        print(f"ERROR: MSG:{hex(id(self))} has no attribute '{attr}' "
+              f"(mtype: {self.type})")
 
 
 def str_from_bytes(startpos: int, b: bytes) -> str:
@@ -126,13 +113,15 @@ def recv_loop(sock: socket.socket) -> None:
         msg = Message(response)
 
         # ignore CONFIRM sent by self
-        if msg.type == "CONFIRM":
-            continue
+        # if msg.type == "CONFIRM":
+        #     continue
 
         # print on stdout
-        print(f"MESSAGE from {retaddr[0]}:")
+        print(f"MESSAGE from {retaddr[0]}:{retaddr[1]}:")
         print(msg)
         print()
+
+
 
         # sleep for 50 ms
         time.sleep(0.1)
