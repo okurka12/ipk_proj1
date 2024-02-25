@@ -11,3 +11,6 @@ https://www.gnu.org/software/libc/manual/html_node/Address-Formats.html
 
 nix development enviroment for c/c++
 nix develop "git+https://git.fit.vutbr.cz/NESFIT/dev-envs.git?dir=ipk#c"
+
+valgrind local testing with server.py
+valgrind -s --track-fds=yes --leak-check=full --show-leak-kinds=all ./ipk24chat-client -t udp -s 127.0.0.1
