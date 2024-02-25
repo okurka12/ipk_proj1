@@ -136,7 +136,7 @@ int udp_wait_for_confirm(int sockfd, msg_t *msg) {
 
     mfree(reply); reply = NULL;
 
-    if (reply_msgid != msg->id || reply_type != CONFIRM) {
+    if (reply_msgid != msg->id || reply_type != MTYPE_CONFIRM) {
         logf(DEBUG, "message type=%x, id=%hu ignored", reply_type, reply_msgid);
         return 0;
     }

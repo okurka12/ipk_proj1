@@ -21,13 +21,13 @@
 #ifndef _I_P_K_2_4_C_H_A_T_H_
 #define _I_P_K_2_4_C_H_A_T_H_
 
-#define CONFIRM	0x00
-#define REPLY	0x01
-#define AUTH	0x02
-#define JOIN	0x03
-#define MSG	    0x04
-#define ERR	    0xFE
-#define BYE	    0xFF
+#define MTYPE_CONFIRM 0x00
+#define MTYPE_REPLY	  0x01
+#define MTYPE_AUTH	  0x02
+#define MTYPE_JOIN	  0x03
+#define MTYPE_MSG	  0x04
+#define MTYPE_ERR	  0xFE
+#define MTYPE_BYE	  0xFF
 
 #define CRLF "\r\n"
 #define LF "\n"

@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     }
 
     char *msg_text = "Hello, I am client.";
-    msg_t msg = { .type = MSG, .id = 1, .content = msg_text };
+    msg_t msg = { .type = MTYPE_MSG, .id = 1, .content = msg_text };
 
     if (conf.tp == UDP) {
         rc = udp_send_msg(&msg, &conf);
