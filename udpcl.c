@@ -17,6 +17,7 @@
  *
  */
 
+#include <assert.h>
 #include <stdio.h>  // perror
 #include <string.h>  // strcpy, memcpy
 #include <unistd.h>  // close
@@ -73,78 +74,96 @@ SSA *udp_get_addrstruct(char *addr, uint16_t port) {
 }
 
 
-/**
- * Private: On an open AF_INET SOCK_DGRAM socket, sends `data`
- * @param sockfd socket file descriptor
- * @param sa server address struct
- * @param data
- * @param length
- * @return 0 on success else 1
-*/
-int udp_send(int sockfd, SSA *sa, const char *data, unsigned int length) {
-
-    ssize_t result = sendto(sockfd, data, length, 0, sa, AS_SIZE);
-    if (result == -1) {
-        perror("sendto failed");
-        log(ERROR, "sendto failed");
-        return 1;
+int udp_set_rcvtimeo(conf_t *conf, unsigned int ms) {
+    int rc = 0;
+    unsigned int sec = ms / 1000;
+    unsigned int msec = ms % 1000;
+    struct timeval t = {.tv_sec = sec , .tv_usec = msec * 1000 };
+    rc = setsockopt(conf->sockfd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
+    if (rc == -1) {
+        rc = 1;
+        perror("Couldn't setsockopt SO_RCVTIMEO");
+        log(ERROR, "couldn't set a timeout on socket");
     }
-    return 0;
+    return rc;
 }
 
 
-/**
- * Private: create AF_INET SOCK_DGRAM socket (UDP)
- * @return socket file descriptor on succes, else -1
- * @note needs to be closed with `close()` from `unistd.h`
-*/
 int udp_create_socket(conf_t *conf) {
+
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1) {
         perror("socket creation failed");
         log(ERROR, "socket creation failed");
-        return -1;
+        return 1;
     }
-    struct timeval t = { .tv_usec = conf->timeout * 1000 };
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
-    return sockfd;
+    conf->sockfd = sockfd;
+
+    return 0;
 }
 
 
-/**
- * Private: waits for confirmation of `msg`
- * @return 1 if message was confirmed, 0 if it was not (timed out)
+/** todo: remove this?
+ * Private: waits for confirmation of `msg`, saves the source port of the
+ * incoming message to `resp_port` (if it isn't NULL)
+ * @param sockfd
+ * @param msg
+ * @param resp_port
+ * @return true if message was confirmed, false if it was not (timed out or
+ * invalid)
 */
-int udp_wait_for_confirm(int sockfd, msg_t *msg) {
-    char *reply = (char *)mmal(CONFIRM_BUFSIZE);
-    if (reply == NULL) {
-        perror(MEMFAIL_MSG);
-        log(ERROR, MEMFAIL_MSG);
-        return 0;
-    }
+// bool udp_wait_for_confirm(int sockfd, msg_t *msg, uint16_t *resp_port) {
 
-    /* todo: what if this catches other udp packet? */
-    int received_bytes = recv(sockfd, reply, CONFIRM_BUFSIZE, 0);
-    if (received_bytes == -1) {
-        logf(DEBUG, "timed out (errno %d)", errno);  // EAGAIN - socket(7)
-        mfree(reply);
-        return 0;
-    }
-    logf(DEBUG, "received %d bytes", received_bytes);
-    uint8_t reply_type = reply[0];
-    uint16_t reply_msgid = read_msgid(reply + 1);
+//     /* buffer for incoming data */
+//     char *reply = (char *)mmal(RESPONSE_BUFSIZE);
+//     if (reply == NULL) {
+//         perror(MEMFAIL_MSG);
+//         log(ERROR, MEMFAIL_MSG);
+//         return 0;
+//     }
 
-    mfree(reply); reply = NULL;
+//     /* bsd socket api stuff */
+//     struct sockaddr_in respaddr;
+//     socklen_t respaddr_len = AS_SIZE;
 
-    if (reply_msgid != msg->id || reply_type != MTYPE_CONFIRM) {
-        logf(DEBUG, "message type=%x, id=%hu ignored", reply_type, reply_msgid);
-        return 0;
-    }
-    return 1;
-}
+//     /* recvfrom */
+//     int received_bytes = recvfrom(sockfd, reply, RESPONSE_BUFSIZE, 0,
+//         (SSA *)&respaddr, &respaddr_len);
+//     if (received_bytes == -1) {
+//         logf(DEBUG, "timed out (errno %d)", errno);  // EAGAIN - socket(7)
+//         mfree(reply);
+//         return 0;
+//     }
+
+//     /* extract the address and portl */
+//     char *respaddr_str = inet_ntoa(respaddr.sin_addr);
+//     if (resp_port != NULL) { *resp_port = ntohs(respaddr.sin_port); }
+
+//     logf(DEBUG, "received %d bytes from %s:%hu", received_bytes, respaddr_str,
+//         ntohs(respaddr.sin_port));
+
+//     /* extract IPK24 message header */
+//     uint8_t reply_type = reply[0];
+//     uint16_t reply_msgid = read_msgid(reply + 1);
+
+//     /* get rid of data (all is extracted) */
+//     mfree(reply); reply = NULL;
+
+//     /* was it the confirm we were looking for? */
+//     if (reply_msgid != msg->id || reply_type != MTYPE_CONFIRM) {
+//         logf(DEBUG, "message type=%s, id=%hu ignored", mtype_str(reply_type),
+//             reply_msgid);
+//         return 0;
+//     }
+
+//     /* message successfully confirmed */
+//     return 1;
+// }
 
 
 int udp_send_msg(msg_t *msg, conf_t *conf) {
+
+    assert(conf->sockfd != -1);
 
     logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
          msg->id, conf->addr, conf->port);
@@ -153,44 +172,76 @@ int udp_send_msg(msg_t *msg, conf_t *conf) {
     SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
     if (sa == NULL) return 1;
 
-    /* create socket */
-    int sockfd = udp_create_socket(conf);
-    if (sockfd == -1) return 1;
-    gexit(GE_SET_FD, &sockfd);
-
     /* render message */
     unsigned int length = 0;
     char *data = udp_render_message(msg, &length);
     if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
 
-    bool confirmed = false;
-
-    unsigned int i;
-    for (i = 0; i < conf->retries; i++) {
-        logf(DEBUG, "sending msg id %hu (attempt: %u)", msg->id, i + 1);
-
-        /* send the packet */
-        udp_send(sockfd, sa, data, length);
-
-        /* wait for CONFIRM (no need to bind) */
-        confirmed = udp_wait_for_confirm(sockfd, msg);
-        if (confirmed) {
-            break;
-        }
+    /* send message */
+    ssize_t result = sendto(conf->sockfd, data, length, 0, sa, AS_SIZE);
+    if (result == -1) {
+        perror("sendto failed");
+        log(ERROR, "sendto failed");
+        return 1;
     }
+    return 0;
 
     /* cleanup */
-    gexit(GE_UNSET_FD, &sockfd);
-    close(sockfd);
     mfree(sa);
     mfree(data);
 
-    if (confirmed) {
-        logf(INFO, "confirmed in %u attempts", i);
-        return 0;
-    } else {
-        logf(WARNING, "couldn't confirm msg %hu in %u attempts", msg->id, i);
-        return ERR_NOTCONF;
-    }
+    return 0;
 }
+
+/* todo: get rid of this */
+// int udp_send_and_confirm(msg_t *msg, conf_t *conf) {
+
+
+//     logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
+//          msg->id, conf->addr, conf->port);
+
+//     /* process address */
+//     SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
+//     if (sa == NULL) return 1;
+
+//     /* create socket */
+//     int sockfd = udp_create_socket(conf);
+//     if (sockfd == -1) return 1;
+//     gexit(GE_SET_FD, &sockfd);
+
+//     /* render message */
+//     unsigned int length = 0;
+//     char *data = udp_render_message(msg, &length);
+//     if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
+
+//     bool confirmed = false;
+
+//     unsigned int i;
+//     for (i = 1; i < conf->retries + 1; i++) {
+//         logf(DEBUG, "sending msg id %hu (attempt: %u)", msg->id, i);
+
+//         /* send the packet */
+//         udp_send(sockfd, sa, data, length);
+
+//         /* wait for CONFIRM (no need to bind) */
+//         confirmed = udp_wait_for_confirm(sockfd, msg, &conf->port);
+//         if (confirmed) {
+//             break;
+//         }
+//     }
+
+//     /* cleanup */
+//     gexit(GE_UNSET_FD, &sockfd);
+//     close(sockfd);
+//     mfree(sa);
+//     mfree(data);
+
+//     if (confirmed) {
+//         logf(INFO, "confirmed in %u attempts", i);
+//         return 0;
+//     } else {
+//         logf(WARNING, "couldn't confirm msg %hu in %u attempts", msg->id, --i);
+//         return ERR_NOTCONF;
+//     }
+// }
 

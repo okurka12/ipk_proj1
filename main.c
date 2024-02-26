@@ -20,6 +20,7 @@
 #include <stdlib.h>  // free, srand
 #include <signal.h>  // register interrupt handler
 #include <time.h>  // something to put in srand
+#include <unistd.h>  // close
 
 
 #include "ipk24chat.h"
@@ -27,6 +28,10 @@
 #include "utils.h"
 #include "argparse.h"
 #include "gexit.h"
+#include "udp_confirmer.h"
+#include "udp_listener.h"
+
+mtx_t gcl;
 
 void handle_interrupt(int sig) {
     (void)sig;
@@ -56,9 +61,55 @@ do { \
 } while (0)
 
 
+/* calls functions from `udpcl` module */
+int main_udp(conf_t *conf) {
+
+    int rc = 0;
+    udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
+
+    /* hard coded message data */
+    msg_t first_msg = { .type = MTYPE_AUTH, .id = 2, .username = "vita123",
+        .dname = "vita", .secret = "asdfghjkl" };
+    msg_t last_msg = { .type = MTYPE_BYE, .id = 3 };
+    (void)first_msg;
+    (void)last_msg;
+
+    /* crate socket + set timeout*/
+    rc = udp_create_socket(conf);
+    if (rc != 0) { log(ERROR, "couldn't create socket"); return 1; }
+    rc = udp_set_rcvtimeo(conf, LISTENER_TIMEOUT);
+    if (rc != 0) { log(ERROR, "couldn't set timeout on socket"); return 1; }
+
+    /* start listener thread */
+    log(DEBUG, "starting listener");
+    thrd_t listener_thread_id;
+    mtx_t listener_mtx;
+    mtx_init(&listener_mtx, mtx_plain);
+    mtx_lock(&listener_mtx);
+    listener_args_t listener_args =
+        { .conf = conf, .cnfm_data = &cnfm_data, .mtx = &listener_mtx};
+    thrd_create(&listener_thread_id, udp_listener, &listener_args);
+
+    /* let listener finish */
+    mtx_unlock(&listener_mtx);
+
+    /* wait for all threads */
+    log(DEBUG, "waiting for listener thread");
+    thrd_join(listener_thread_id, NULL);
+
+    log(INFO, "udp client done");
+    return rc;
+}
+
+
 int main(int argc, char *argv[]) {
 
-    /* needed for testing (see `mmal.c`) otherwise it has no effect */
+    if (mtx_init(&gcl, mtx_plain) == thrd_error) {
+        log(FATAL, "couldnt initialize global lock");
+        return 1;
+    }
+
+    /* needed for testing (see `mmal.c`), normally it has no effect */
     srand(time(NULL));
     logf(DEBUG, "random number: %d", rand());
 
@@ -68,13 +119,14 @@ int main(int argc, char *argv[]) {
     /* return code */
     int rc = 0;
 
-    conf_t conf;
+    conf_t conf = { .addr = NULL, .sockfd = -1 };
 
     if (not args_ok(argc, argv, &conf)) {
         log(ERROR, "bad arguments (or no memory?)");
         free(conf.addr);
         return ERR_BAD_ARG;
     }
+
     if (conf.should_print_help) {
         printf(USAGE LF);
         printf(HELP_TXT LF);
@@ -82,33 +134,15 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    /* testing messages */
-    msg_t msg1 = { .type = MTYPE_CONFIRM, .ref_msgid = 12345 };
-    msg_t msg2 = { .type = MTYPE_REPLY, .id = 1, .result = 1,
-        .ref_msgid = 54321, .content = "toto je odpoved" };
-    msg_t msg3 = { .type = MTYPE_AUTH, .id = 2, .username = "vita123",
-        .dname = "vita", .secret = "asdfghjkl" };
-    msg_t msg4 = { .type = MTYPE_JOIN, .id = 3, .chid = "kanal_123",
-        .dname = "vitecek" };
-    msg_t msg5 = { .type = MTYPE_MSG, .id = 4, .dname = "vita",
-        .content = "Hello, I am client." };
-    msg_t msg6 = { .type = MTYPE_ERR, .id = 5, .dname = "vita",
-        .content = "Hello, I am client." };
-    msg_t msg7 = { .type = MTYPE_BYE, .id = 6 };
-
     if (conf.tp == UDP) {
-        smchrc(&msg1,  &conf, &rc);
-        smchrc(&msg2, &conf, &rc);
-        smchrc(&msg3, &conf, &rc);
-        smchrc(&msg4, &conf, &rc);
-        smchrc(&msg5, &conf, &rc);
-        smchrc(&msg6, &conf, &rc);
-        smchrc(&msg7, &conf, &rc);
+        rc = main_udp(&conf);
     } else {
         log(FATAL, "tcp version not implemented yet");
     }
 
     /* cleanup */
+    gexit(GE_UNSET_FD, NULL);
+    close(conf.sockfd);
     gexit(GE_FREE_RES, NULL);
     free(conf.addr);
 

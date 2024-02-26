@@ -17,6 +17,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <threads.h>
+
 
 #ifndef _I_P_K_2_4_C_H_A_T_H_
 #define _I_P_K_2_4_C_H_A_T_H_
@@ -55,6 +57,10 @@
 "    -r           Maximum number of UDP retransmissions (default is " \
                   STR(DEFAULT_RETRIES) ")" LF \
 "    -h           Print help and exit"
+
+
+/* global client lock (todo: maybe move this elsewhere?) */
+extern mtx_t gcl;
 
 /* message struct */
 typedef struct {
@@ -106,6 +112,9 @@ typedef struct {
 
     /* presence of -h option */
     bool should_print_help;
+
+    /* socket to send and receive messages from */
+    int sockfd;
 
 } conf_t;
 

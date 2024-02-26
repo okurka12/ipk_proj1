@@ -28,9 +28,10 @@ CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -g -std=c11 -DLOGLEVEL=$(LOGLEVEL) \
 $(DNDEBUG) $(ASAN)
 
-LDFLAGS=$(ASAN)
+LDFLAGS=$(ASAN) -lpthread
 
-MODULES = udpcl.o rwmsgid.o main.o argparse.o gexit.o mmal.o udp_render.o
+MODULES = udpcl.o rwmsgid.o main.o argparse.o gexit.o mmal.o udp_render.o \
+udp_confirmer.o udp_listener.o
 
 ALL: $(RESULT_BINARY)
 
@@ -41,7 +42,8 @@ udp_render.h
 rwmsgid.o: rwmsgid.c rwmsgid.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-main.o: main.c ipk24chat.h udpcl.h utils.h argparse.h gexit.h
+main.o: main.c ipk24chat.h udpcl.h utils.h argparse.h gexit.h udp_confirmer.h \
+udp_listener.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 argparse.o: argparse.c argparse.h ipk24chat.h utils.h mmal.h
@@ -54,6 +56,13 @@ mmal.o: mmal.c mmal.h gexit.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_render.o: udp_render.c udp_render.h mmal.h ipk24chat.h rwmsgid.h utils.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+udp_listener.o: udp_listener.c udp_listener.h ipk24chat.h udp_confirmer.h \
+utils.h mmal.h rwmsgid.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+udp_confirmer.o: udp_confirmer.c ipk24chat.h udp_confirmer.h mmal.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(RESULT_BINARY): $(MODULES)
