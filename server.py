@@ -95,7 +95,7 @@ class Message:
             output_list.append(f"'{no_lf(self.content)}'")
 
         output_list.append(str(self.binary))
-        
+
         return delim.join(output_list)
 
     def __getattr__(self, attr) -> None:
