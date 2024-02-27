@@ -117,6 +117,10 @@ int main_udp(conf_t *conf) {
     /* start listener again, but now for real */
     listener_args.save_port = false;
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
+    if (rc != thrd_success) {
+        log(ERROR, "couldn't create listener thread");
+        return 1;
+    }
 
     /* now that listener is started and will be confirming messages,
     we can send messages */
