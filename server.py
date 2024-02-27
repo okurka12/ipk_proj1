@@ -14,6 +14,9 @@ import pdb
 BIND_IP = "0.0.0.0"  # listen on every available network interface
 UDP_PORT = 4567  # default IPK24-CHAT port
 
+# timeout for recv-loop
+RECV_TIMEOUT = 0.2
+
 FAMILY = socket.AF_INET
 
 # do we want to prin bloat?
@@ -126,10 +129,31 @@ def no_lf(s: str) -> str:
 
 def recv_loop(sock: socket.socket) -> None:
 
+    # socket to send replies from
+    sock_dynport = socket.socket(FAMILY, TYPE)
+    sock_dynport.settimeout(RECV_TIMEOUT)
+
     while True:
+        came_to_default_port = False
+        came_to_dynamic_port = False
 
         # wait for the message
-        response, retaddr = sock.recvfrom(2048)
+        try:
+            response, retaddr = sock.recvfrom(2048)
+            print(f"Message came to port {UDP_PORT}")
+            came_to_default_port = True
+        except TimeoutError:
+            pass
+        if not came_to_default_port:
+            try:
+                response, retaddr = sock_dynport.recvfrom(2048)
+                print("Message came to port dyn2")
+                came_to_dynamic_port = True
+            except TimeoutError:
+                pass
+
+        if not came_to_default_port and not came_to_dynamic_port:
+            continue
 
         msg = Message(response)
 
@@ -146,7 +170,7 @@ def recv_loop(sock: socket.socket) -> None:
         reply[0] = MSG_INV_TYPES["CONFIRM"]
         reply[1] = response[1]
         reply[2] = response[2]
-        sock.sendto(reply, retaddr)
+        sock_dynport.sendto(reply, retaddr)
 
 
 
@@ -157,6 +181,7 @@ def main():
     # create socket and bind
     sock = socket.socket(FAMILY, TYPE)
     sock.bind((BIND_IP, UDP_PORT))
+    sock.settimeout(RECV_TIMEOUT)
     print(f"started server on {BIND_IP} port {UDP_PORT}")
 
     try:
