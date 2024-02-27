@@ -59,7 +59,7 @@
 "    -h           Print help and exit"
 
 
-/* global client lock (todo: maybe move this elsewhere?) */
+/* global client lock (for accessing `conf` or `cnfm_data`) */
 extern mtx_t gcl;
 
 /* message struct */
