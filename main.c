@@ -62,7 +62,8 @@ do { \
 } while (0)
 
 
-/* calls functions from `udpcl` module */
+/* todo: move udp_main to udpcl.c
+calls functions from `udpcl` module */
 int main_udp(conf_t *conf) {
 
     int rc = 0;
@@ -70,9 +71,12 @@ int main_udp(conf_t *conf) {
 
     /* hard coded message data */
     msg_t first_msg = { .type = MTYPE_AUTH, .id = 2, .username = "vita123",
-        .dname = "vita", .secret = "asdfghjkl" };
-    msg_t last_msg = { .type = MTYPE_BYE, .id = 3 };
+        .dname = "vita", .secret = "82a50ce2-4f14-4ab2-bb8c-f7e4945385ea" };
+    msg_t msg2 = { .type = MTYPE_MSG, .id = 3, .content = "Hello.",
+        .dname = "vita" };
+    msg_t last_msg = { .type = MTYPE_BYE, .id = 4 };
     (void)first_msg;
+    (void)msg2;
     (void)last_msg;
 
     /* crate socket + set timeout*/
@@ -81,27 +85,57 @@ int main_udp(conf_t *conf) {
     rc = udp_set_rcvtimeo(conf, LISTENER_TIMEOUT);
     if (rc != 0) { log(ERROR, "couldn't set timeout on socket"); return 1; }
 
-    /* start listener thread */
-    log(DEBUG, "starting listener");
+    /* start listener thread (only to return immediately after receiving
+    a CONFIRM message for `first_msg`, the lock isn't unlocked by listener) */
+    log(DEBUG, "MAIN: starting listener");
     thrd_t listener_thread_id;
     mtx_t listener_mtx;
     mtx_init(&listener_mtx, mtx_plain);
     mtx_lock(&listener_mtx);
-    listener_args_t listener_args =
-        { .conf = conf, .cnfm_data = &cnfm_data, .mtx = &listener_mtx};
-    thrd_create(&listener_thread_id, udp_listener, &listener_args);
+    listener_args_t listener_args = {
+        .conf = conf,
+        .cnfm_data = &cnfm_data,
+        .mtx = &listener_mtx,
+        .save_port = true,
+        .auth_msg_id = first_msg.id
+    };
+    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
+    if (rc != thrd_success) {
+        log(ERROR, "couldnt create listener thread");
+        return 1;
+    }
 
+    /* send first AUTH message */
     rc = udp_sender_send(&first_msg, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+
+
+    /* wait for the listener thread */
+    log(DEBUG, "waiting for listener thread");
+    thrd_join(listener_thread_id, NULL);
+
+    /* start listener again, but now for real */
+    listener_args.save_port = false;
+    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
+
+    /* now that listener is started and will be confirming messages,
+    we can send messages */
+    rc = udp_sender_send(&msg2, conf, &cnfm_data);
     if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
     rc = udp_sender_send(&last_msg, conf, &cnfm_data);
     if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
 
+
+
     /* let listener finish */
     mtx_unlock(&listener_mtx);
 
-    /* wait for all threads */
+    /* wait for it to finish */
     log(DEBUG, "waiting for listener thread");
     thrd_join(listener_thread_id, NULL);
+
+    /* cleanup */
+    mtx_destroy(&listener_mtx);
 
     log(INFO, "udp client done");
     return rc;
