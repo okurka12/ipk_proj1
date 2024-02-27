@@ -37,41 +37,12 @@
 #include "udp_render.h"
 
 /* addres struct for sendto */
-#define SSA struct sockaddr
+// #define SSA struct sockaddr
 
 /* size of the addres structure (`struct sockaddr_in`) */
-#define AS_SIZE sizeof(struct sockaddr_in)
+// #define AS_SIZE sizeof(struct sockaddr_in)
 
-/**
- * Private: fill `struct sockaddr_in` from `addr`
- * used in `udp_send_msg`
- * @return a pointer to `struct sockaddr` (SSA) (but it actually
- * points to `struct sockaddr_in` of size AS_SIZE) on success, else NULL
- * @note dynamically allocated, needs to be freed
-*/
-SSA *udp_get_addrstruct(char *addr, uint16_t port) {
 
-    /* allocate + initialize to zero, initialize domain */
-    struct sockaddr_in *s = mcal(sizeof(struct sockaddr_in), 1);
-    if (s == NULL) {
-        perror(MEMFAIL_MSG);
-        log(ERROR, MEMFAIL_MSG);
-        return NULL;
-    }
-    s->sin_family = AF_INET;
-
-    /* convert IP addres from text to binary */
-    if (inet_pton(AF_INET, addr, &s->sin_addr) <= 0) {
-        perror("inet_pton error (invalid address?)");
-        logf(ERROR, "inet_pton error (invalid address '%s' ?)", addr);
-        return NULL;
-    }
-
-    /* convert from host byte order to network byte order */
-    s->sin_port = htons(port);
-
-    return (SSA *)s;
-}
 
 
 int udp_set_rcvtimeo(conf_t *conf, unsigned int ms) {
@@ -161,37 +132,37 @@ int udp_create_socket(conf_t *conf) {
 // }
 
 
-int udp_send_msg(msg_t *msg, conf_t *conf) {
+// int udp_send_msg(msg_t *msg, conf_t *conf) {
 
-    assert(conf->sockfd != -1);
+//     assert(conf->sockfd != -1);
 
-    logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
-         msg->id, conf->addr, conf->port);
+//     logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
+//          msg->id, conf->addr, conf->port);
 
-    /* process address */
-    SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
-    if (sa == NULL) return 1;
+//     /* process address */
+//     SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
+//     if (sa == NULL) return 1;
 
-    /* render message */
-    unsigned int length = 0;
-    char *data = udp_render_message(msg, &length);
-    if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
+//     /* render message */
+//     unsigned int length = 0;
+//     char *data = udp_render_message(msg, &length);
+//     if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
 
-    /* send message */
-    ssize_t result = sendto(conf->sockfd, data, length, 0, sa, AS_SIZE);
-    if (result == -1) {
-        perror("sendto failed");
-        log(ERROR, "sendto failed");
-        return 1;
-    }
-    return 0;
+//     /* send message */
+//     ssize_t result = sendto(conf->sockfd, data, length, 0, sa, AS_SIZE);
+//     if (result == -1) {
+//         perror("sendto failed");
+//         log(ERROR, "sendto failed");
+//         return 1;
+//     }
+//     return 0;
 
-    /* cleanup */
-    mfree(sa);
-    mfree(data);
+//     /* cleanup */
+//     mfree(sa);
+//     mfree(data);
 
-    return 0;
-}
+//     return 0;
+// }
 
 /* todo: get rid of this */
 // int udp_send_and_confirm(msg_t *msg, conf_t *conf) {

@@ -30,6 +30,7 @@
 #include "gexit.h"
 #include "udp_confirmer.h"
 #include "udp_listener.h"
+#include "udp_sender.h"
 
 mtx_t gcl;
 
@@ -89,6 +90,11 @@ int main_udp(conf_t *conf) {
     listener_args_t listener_args =
         { .conf = conf, .cnfm_data = &cnfm_data, .mtx = &listener_mtx};
     thrd_create(&listener_thread_id, udp_listener, &listener_args);
+
+    rc = udp_sender_send(&first_msg, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    rc = udp_sender_send(&last_msg, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
 
     /* let listener finish */
     mtx_unlock(&listener_mtx);

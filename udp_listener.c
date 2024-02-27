@@ -87,12 +87,14 @@ int udp_listener(void *args) {
     uint8_t reply_type = buf[0];
     uint16_t reply_msgid = read_msgid(buf + 1);
 
-
+    /* todo: break on BYE messages and also send confirms */
     /* case: message is a CONFIRM message */
     if (reply_type == MTYPE_CONFIRM && received_bytes >= 3) {
         logf(DEBUG, "confirming id=%hu", reply_msgid);
         udp_cnfm_confirm(reply_msgid, cnfm_data);
     }
+
+    /* todo: print the messages and keep track of seen messages */
 
     }  // while true
 
