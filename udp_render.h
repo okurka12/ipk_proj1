@@ -21,6 +21,6 @@
  * @note dynamically allocated, needs to be freed
  * @return pointer to rendered `msg` or NULL on failure
 */
-char *udp_render_message(msg_t *msg, unsigned int *length);
+char *udp_render_message(const msg_t *msg, unsigned int *length);
 
 #endif  // ifndef _U_D_P_R_E_N_D_E_R_H_

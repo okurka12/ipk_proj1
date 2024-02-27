@@ -30,7 +30,7 @@ do { \
 } while (0)
 
 
-char *udp_render_message(msg_t *msg, unsigned int *length) {
+char *udp_render_message(const msg_t *msg, unsigned int *length) {
 
     char *output = NULL;
     *length = 0;
