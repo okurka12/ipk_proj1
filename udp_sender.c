@@ -93,6 +93,7 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
             log(ERROR, "sendto failed");
             return 1;
         }
+        udp_cnfm_reg(msg->id, cnfm_data);
         sleep_ms(conf->timeout);
         confirmed = udp_cnfm_was_confirmed(msg->id, cnfm_data);
         if (confirmed) break;
@@ -107,7 +108,7 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
         return 1;
     } else {
         logf(DEBUG, "udp_sender ended successfully (msg id %hu, confirmed "
-            "on the %u. attempt)", msg->id, i);
+            "on the %u. attempt)", msg->id, i + 1);
         return 0;
     }
 }
