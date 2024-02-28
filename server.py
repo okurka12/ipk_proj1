@@ -15,7 +15,9 @@ BIND_IP = "0.0.0.0"  # listen on every available network interface
 UDP_PORT = 4567  # default IPK24-CHAT port
 
 # timeout for recv-loop
-RECV_TIMEOUT = 0.2
+RECV_TIMEOUT = 0.01
+
+REPLY_FROM_DYNAMIC_PORT = True
 
 FAMILY = socket.AF_INET
 
@@ -163,17 +165,26 @@ def recv_loop(sock: socket.socket) -> None:
         print()
 
         # sleep for 50 ms
-        time.sleep(0.1)
+        # time.sleep(0.1)
+
+        reply_socket = sock_dynport if REPLY_FROM_DYNAMIC_PORT else sock
 
         # send confirm
+        print(f"confirming msg id={msg.id}")
         reply = bytearray(3)
         reply[0] = MSG_INV_TYPES["CONFIRM"]
         reply[1] = response[1]
         reply[2] = response[2]
-        sock_dynport.sendto(reply, retaddr)
+        reply_socket.sendto(reply, retaddr)
 
+        time.sleep(0.05)
 
-
+        # send another message
+        print("sending REPLY message")
+        arr = [1, 0, 1]
+        arr.extend([ord(c) for c in "ahoj toto je zprava typu REPLY"])
+        reply = bytearray(arr)
+        reply_socket.sendto(reply, retaddr)
 
 
 def main():
