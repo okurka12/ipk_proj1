@@ -28,6 +28,7 @@
 #include "utils.h"
 #include "mmal.h"
 #include "rwmsgid.h"
+#include "udp_sender.h"
 
 
 /* addres struct for sendto */
@@ -39,8 +40,12 @@
 
 void udp_listener_print(char *msg, unsigned int len) {
     if (len > 0) {
-        printf("%s: b\"", mtype_str(msg[0]));
+        printf("\n%s ", mtype_str(msg[0]));
     }
+    if (len > 2) {
+        printf("id=%hu: ", read_msgid(msg + 1));
+    }
+    printf("b\"");
     for (unsigned int i = 0; i < len; i++) {
         if (isprint(msg[i])) {
             putchar(msg[i]);
@@ -76,6 +81,7 @@ int udp_listener(void *args) {
     /* bsd socket api stuff */
     struct sockaddr_in respaddr;
     socklen_t respaddr_len = AS_SIZE;
+    SSA *sa = udp_get_addrstruct(conf->addr, conf->port);  // for sending conf.
 
     /* loop */
     while (true) {
@@ -106,6 +112,11 @@ int udp_listener(void *args) {
     logf(DEBUG, "received %d bytes from %s:%hu", received_bytes, respaddr_str,
         respaddr_port);
 
+    if (received_bytes < 3) {
+        logf(INFO, "got only %d byte(s), ignoring", received_bytes);
+        continue;
+    }
+
     /* extract IPK24 message header */
     uint8_t resp_mtype = buf[0];
     uint16_t resp_id = read_msgid(buf + 1);  // id (or ref_id for CONFIRM)
@@ -120,22 +131,31 @@ int udp_listener(void *args) {
         break;
     }
 
-    /* todo: break on BYE messages and also send confirms */
-    /* case: message is a CONFIRM message */
-    if (resp_mtype == MTYPE_CONFIRM and received_bytes >= 3) {
-        logf(DEBUG, "confirming id=%hu", resp_id);
+    if (resp_mtype == MTYPE_CONFIRM) {
+        logf(DEBUG, "outgoing message id=%hu confirmed", resp_id);
         udp_cnfm_confirm(resp_id, cnfm_data);
+    } else {
+        logf(DEBUG, "sending CONFIRM for id %hu", resp_id);
+        char data[3] = { MTYPE_CONFIRM, 0, 0 };
+        write_msgid(data + 1, resp_id);
+        ssize_t result = sendto(conf->sockfd, data, 3, 0, sa, AS_SIZE);
+        if (result == -1) {
+            perror("sendto failed");
+            log(ERROR, "sendto failed");
+            return 1;
+        }
     }
     if (resp_mtype == MTYPE_BYE) {
         break;
     }
 
-    /* todo: print the messages and keep track of seen messages */
+    /* todo: keep track of seen messages */
 
     }  // while true
 
     /* get rid of data (all is extracted) */
     mfree(buf); buf = NULL;
+    mfree(sa);
 
     log(DEBUG, "listener done...");
     return 0;
