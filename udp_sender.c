@@ -26,6 +26,10 @@
 #include "sleep_ms.h"
 #include "udp_confirmer.h"
 
+/* confirm check interval in miliseconds (after sending, periodically check if
+a message was confirmed, basically active waiting) */
+#define CCHECK_INT 10
+
 /* addres struct for sendto */
 #define SSA struct sockaddr
 
@@ -83,7 +87,7 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
     char *data = udp_render_message(msg, &length);
     if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
 
-    /* send message */
+    /* send message in n retries, break if confirmed */
     int confirmed = false;
     unsigned int i;
     udp_cnfm_reg(msg->id, cnfm_data);
@@ -94,12 +98,19 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
             log(ERROR, "sendto failed");
             return 1;
         }
-        /* todo: actively wait for the CONFIRM (dont sleep for the whole
-        timeout but for like 10 ms) */
-        sleep_ms(conf->timeout);
-        confirmed = udp_cnfm_was_confirmed(msg->id, cnfm_data);
-        if (confirmed) break;
+
+        /* wait for at least CCHECK_INT, at most for conf->timeout */
+        for (unsigned int j = 0; j * CCHECK_INT < conf->timeout; j++) {
+            sleep_ms(CCHECK_INT);
+            confirmed = udp_cnfm_was_confirmed(msg->id, cnfm_data);
+            if (confirmed) goto after_outer_loop;  // double break
+        }
+
+        logf(DEBUG, "msg id=%hu not confirmed after %u ms, senging again",
+            msg->id, conf->timeout);
     }
+    after_outer_loop:
+
     /* cleanup */
     mfree(sa);
     mfree(data);
