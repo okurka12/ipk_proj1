@@ -19,6 +19,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>  // struct sockaddr_in
 #include <arpa/inet.h>  // htons
+#include <ctype.h>
+#include <stdio.h>
 
 #include "udp_listener.h"
 #include "ipk24chat.h"  // conf_t
@@ -33,6 +35,21 @@
 
 /* size of the addres structure (`struct sockaddr_in`) */
 #define AS_SIZE sizeof(struct sockaddr_in)
+
+
+void udp_listener_print(char *msg, unsigned int len) {
+    if (len > 0) {
+        printf("%s: b\"", mtype_str(msg[0]));
+    }
+    for (unsigned int i = 0; i < len; i++) {
+        if (isprint(msg[i])) {
+            putchar(msg[i]);
+        } else {
+            printf("\\x%02hhu", (unsigned char)msg[i]);
+        }
+    }
+    printf("\"\n");
+}
 
 
 int udp_listener(void *args) {
@@ -75,10 +92,13 @@ int udp_listener(void *args) {
     int received_bytes = recvfrom(conf->sockfd, buf, RESPONSE_BUFSIZE, 0,
         (SSA *)&respaddr, &respaddr_len);
 
+
     /* if recvfrom timed out */
     if (received_bytes == -1) {
         continue;
     }
+
+    udp_listener_print(buf, received_bytes);
 
     /* extract the address and port */
     char *respaddr_str = inet_ntoa(respaddr.sin_addr);
@@ -93,6 +113,7 @@ int udp_listener(void *args) {
     /* special case: listener only called to obtain the source port of
     a CONFIRM message to the first AUTH message*/
     if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
+        udp_cnfm_confirm(auth_msgid, cnfm_data);
         logf(DEBUG, "AUTH msg id=%hu, was confirmed from port %hu, "
             "changing conf->port", auth_msgid, respaddr_port);
         conf->port = respaddr_port;
@@ -101,9 +122,12 @@ int udp_listener(void *args) {
 
     /* todo: break on BYE messages and also send confirms */
     /* case: message is a CONFIRM message */
-    if (resp_mtype == MTYPE_CONFIRM && received_bytes >= 3) {
+    if (resp_mtype == MTYPE_CONFIRM and received_bytes >= 3) {
         logf(DEBUG, "confirming id=%hu", resp_id);
         udp_cnfm_confirm(resp_id, cnfm_data);
+    }
+    if (resp_mtype == MTYPE_BYE) {
+        break;
     }
 
     /* todo: print the messages and keep track of seen messages */
