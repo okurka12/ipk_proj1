@@ -30,20 +30,7 @@
 a message was confirmed, basically active waiting) */
 #define CCHECK_INT 10
 
-/* addres struct for sendto */
-#define SSA struct sockaddr
 
-/* size of the addres structure (`struct sockaddr_in`) */
-#define AS_SIZE sizeof(struct sockaddr_in)
-
-
-/**
- * Private: fill `struct sockaddr_in` from `addr`
- * used in `udp_send_msg`
- * @return a pointer to `struct sockaddr` (SSA) (but it actually
- * points to `struct sockaddr_in` of size AS_SIZE) on success, else NULL
- * @note dynamically allocated, needs to be freed
-*/
 SSA *udp_get_addrstruct(char *addr, uint16_t port) {
 
     /* allocate + initialize to zero, initialize domain */
