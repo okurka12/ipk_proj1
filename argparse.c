@@ -39,31 +39,6 @@ char *strdup(const char *s) {
 }
 
 
-/**
- * returns a position in `s` where the first non-whitespace character is found
- * or NULL if there's no non-whitespace character
-*/
-char *next_nonws(char *s) {
-    if (not isspace(*s)) return s;
-
-    unsigned int i = 0;
-    for (i = 0; s[i] != '\0'; i++) {
-        if (not isspace(s[i])) {
-            break;
-        }
-    }
-    if (i != strlen(s)) {
-        return s + i;
-    } else {
-        return NULL;
-    }
-}
-
-bool is_opt(char *s) {
-    return s[0] == '-';
-}
-
-
 bool args_ok(int argc, char *argv[], conf_t *conf) {
 
     /* default values */
@@ -144,9 +119,13 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
     }
 
     (void)p_specified;
-    (void)d_specified;
     (void)r_specified;
     (void)h_specified;
+
+    if (not d_specified) {
+        logf(DEBUG, "-d not specified, therefore the timeout is %u ms",
+            conf->timeout);
+    }
 
     if (not t_specified or not s_specified) {
         log(ERROR, "server or transport protocol not specified");
