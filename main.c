@@ -31,6 +31,7 @@
 #include "udp_confirmer.h"
 #include "udp_listener.h"
 #include "udp_sender.h"
+#include "sleep_ms.h"
 
 mtx_t gcl;
 
@@ -49,7 +50,7 @@ char *mtype_str(uint8_t mtype) {
         case 0xFE: return "ERR";
         case 0xFF: return "BYE";
     }
-    return "";
+    return "unknown";
 }
 
 /* send message and check return code (put it into `int *rcp`) */
@@ -70,9 +71,9 @@ int main_udp(conf_t *conf) {
     udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
 
     /* hard coded message data */
-    msg_t first_msg = { .type = MTYPE_AUTH, .id = 2, .username = "vita123",
-        .dname = "vita", .secret = "82a50ce2-4f14-4ab2-bb8c-f7e4945385ea" };
-    msg_t msg2 = { .type = MTYPE_MSG, .id = 3, .content = "Hello.",
+    msg_t first_msg = { .type = MTYPE_AUTH, .id = 2, .username = "xpavli0a",
+        .dname = "vita", .secret = "a38c9ccc-9934-4603-afc8-33d9db47c66c" };
+    msg_t msg2 = { .type = MTYPE_JOIN, .id = 3, .chid = "discord.general",
         .dname = "vita" };
     msg_t last_msg = { .type = MTYPE_BYE, .id = 4 };
     (void)first_msg;
@@ -114,6 +115,8 @@ int main_udp(conf_t *conf) {
     log(DEBUG, "waiting for listener thread");
     thrd_join(listener_thread_id, NULL);
 
+    logf(INFO, "REPLY came from port %hu", conf->port);
+
     /* start listener again, but now for real */
     listener_args.save_port = false;
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
@@ -122,10 +125,14 @@ int main_udp(conf_t *conf) {
         return 1;
     }
 
+    /* sleep before sending msg2 */
+    // sleep_ms(400);
+
     /* now that listener is started and will be confirming messages,
     we can send messages */
-    rc = udp_sender_send(&msg2, conf, &cnfm_data);
-    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    // rc = udp_sender_send(&msg2, conf, &cnfm_data);
+    // if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    // sleep_ms(400);
     rc = udp_sender_send(&last_msg, conf, &cnfm_data);
     if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
 
