@@ -32,6 +32,7 @@
 #include "udp_listener.h"
 #include "udp_sender.h"
 #include "sleep_ms.h"
+#include "mmal.h"  // todo: remove this after moving udp_main
 
 mtx_t gcl;
 
@@ -147,6 +148,7 @@ int main_udp(conf_t *conf) {
 
     /* cleanup */
     mtx_destroy(&listener_mtx);
+    mfree(cnfm_data.arr);
 
     log(INFO, "udp client done");
     return rc;
