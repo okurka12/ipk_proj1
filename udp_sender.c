@@ -86,6 +86,7 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
     /* send message */
     int confirmed = false;
     unsigned int i;
+    udp_cnfm_reg(msg->id, cnfm_data);
     for (i = 0; i < conf->retries; i++) {
         ssize_t result = sendto(conf->sockfd, data, length, 0, sa, AS_SIZE);
         if (result == -1) {
@@ -93,7 +94,8 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
             log(ERROR, "sendto failed");
             return 1;
         }
-        udp_cnfm_reg(msg->id, cnfm_data);
+        /* todo: actively wait for the CONFIRM (dont sleep for the whole
+        timeout but for like 10 ms) */
         sleep_ms(conf->timeout);
         confirmed = udp_cnfm_was_confirmed(msg->id, cnfm_data);
         if (confirmed) break;
