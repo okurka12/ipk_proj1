@@ -62,11 +62,11 @@ void udp_cnfm_confirm(uint16_t id, udp_cnfm_data_t *data) {
             return;
         }
     }
+    logf(WARNING, "msg id=%hu was not registered?", id);
     mtx_unlock(&gcl);
 }
 
 bool udp_cnfm_was_confirmed(uint16_t id, udp_cnfm_data_t *data) {
-    logf(DEBUG, "xd xd %u %p", data->len, (void *)data->arr);
     mtx_lock(&gcl);
     for (unsigned int i = 0; i < data->len; i++) {
         if (data->arr[i] == id) {
