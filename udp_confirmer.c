@@ -16,6 +16,9 @@
 #include "ipk24chat.h"  // gcl
 #include "udp_confirmer.h"
 #include "mmal.h"
+
+/* disable logging just for this module */
+#define NDEBUG
 #include "utils.h"
 
 /* unlocks `gcl` and returns `rval` */
