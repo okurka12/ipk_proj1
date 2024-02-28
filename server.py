@@ -169,22 +169,25 @@ def recv_loop(sock: socket.socket) -> None:
 
         reply_socket = sock_dynport if REPLY_FROM_DYNAMIC_PORT else sock
 
-        # send confirm
-        print(f"confirming msg id={msg.id}")
-        reply = bytearray(3)
-        reply[0] = MSG_INV_TYPES["CONFIRM"]
-        reply[1] = response[1]
-        reply[2] = response[2]
-        reply_socket.sendto(reply, retaddr)
+        # send CONFIRM and REPLY
+        if msg.type != "CONFIRM":
+            print(f"confirming msg id={msg.id}")
+            reply = bytearray(3)
+            reply[0] = MSG_INV_TYPES["CONFIRM"]
+            reply[1] = response[1]
+            reply[2] = response[2]
+            reply_socket.sendto(reply, retaddr)
+            continue
 
-        time.sleep(0.05)
+            time.sleep(0.05)
 
-        # send another message
-        print("sending REPLY message")
-        arr = [1, 0, 1]
-        arr.extend([ord(c) for c in "ahoj toto je zprava typu REPLY"])
-        reply = bytearray(arr)
-        reply_socket.sendto(reply, retaddr)
+            # send another message
+            print("sending REPLY message")
+            arr = [1, 0, 1]
+            arr.extend([ord(c) for c in "ahoj toto je zprava typu REPLY"])
+            reply = bytearray(arr)
+            reply_socket.sendto(reply, retaddr)
+
 
 
 def main():
