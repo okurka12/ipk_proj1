@@ -32,7 +32,7 @@
 /* returns NULL or `iden` with probability `TRESHOLD` */
 #define value(iden) \
 (rand() < (int)(TRESHOLD*RAND_MAX) ? \
-(fprintf(stderr, "MMAL RETURNING NULL\n"), NULL) : iden)
+(fprintf(stderr, "MMAL RETURNING NULL\n"), free(p), NULL) : iden)
 
 #else  // ifdef TEST_MALLOC_NULL
 
