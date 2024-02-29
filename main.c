@@ -14,6 +14,9 @@
  * main module for ipk24chat-client
 */
 
+/* for getaddrinfo */
+#define _POSIX_C_SOURCE 200112L
+
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -21,6 +24,9 @@
 #include <signal.h>  // register interrupt handler
 #include <time.h>  // something to put in srand
 #include <unistd.h>  // close
+#include <netdb.h>  // getaddrinfo
+#include <netinet/in.h>  // struct sockaddr_in
+#include <arpa/inet.h>  // inet_ntoa
 
 
 #include "ipk24chat.h"
@@ -35,6 +41,38 @@
 #include "mmal.h"  // todo: remove this after moving udp_main
 
 mtx_t gcl;
+
+/* changes conf->addr from hostname to address */
+int resolve_hostname(conf_t *conf) {
+
+    /* getaddrinfo stuff */
+    struct sockaddr_in s;
+    struct addrinfo hints, *result;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;  // IPv4
+    hints.ai_socktype = SOCK_DGRAM;  // UDP
+    if (getaddrinfo(conf->addr, NULL, &hints, &result) != 0) {
+        perror("getaddrinfo error");
+        logf(ERROR, "getaddrinfo error for address '%s'", conf->addr);
+        return 1;
+    }
+
+    /* use the first address (result is a linked list) */
+    memcpy(&s, result->ai_addr, result->ai_addrlen);
+
+    /* ptr to statically allocated address from inet_ntoa */
+    char *addrp = inet_ntoa(s.sin_addr);
+
+    /* copy it and overwrite conf->addr */
+    char *new_addr = mmal(strlen(addrp) + 1);
+    strcpy(new_addr, addrp);
+    freeaddrinfo(result);
+    logf(DEBUG, "converted %s to %s", conf->addr, new_addr);
+    mfree(conf->addr);
+    conf->addr = new_addr;
+
+    return 0;
+}
 
 void handle_interrupt(int sig) {
     (void)sig;
@@ -131,8 +169,8 @@ int main_udp(conf_t *conf) {
 
     /* now that listener is started and will be confirming messages,
     we can send messages */
-    // rc = udp_sender_send(&msg2, conf, &cnfm_data);
-    // if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    rc = udp_sender_send(&msg2, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
     // sleep_ms(400);
     rc = udp_sender_send(&last_msg, conf, &cnfm_data);
     if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
@@ -178,6 +216,10 @@ int main(int argc, char *argv[]) {
         log(ERROR, "bad arguments (or no memory?)");
         free(conf.addr);
         return ERR_BAD_ARG;
+    }
+
+    if (resolve_hostname(&conf) != 0) {
+        logf(ERROR, "couldn't resolve host %s", conf.addr);
     }
 
     if (conf.should_print_help) {
