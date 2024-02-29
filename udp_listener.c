@@ -38,7 +38,7 @@
 #define AS_SIZE sizeof(struct sockaddr_in)
 
 
-void udp_listener_print(char *msg, unsigned int len) {
+void print_raw(char *msg, unsigned int len) {
     if (len > 0) {
         printf("\n%s ", mtype_str(msg[0]));
     }
@@ -104,7 +104,7 @@ int udp_listener(void *args) {
         continue;
     }
 
-    udp_listener_print(buf, received_bytes);
+    print_raw(buf, received_bytes);
 
     /* extract the address and port */
     char *respaddr_str = inet_ntoa(respaddr.sin_addr);
