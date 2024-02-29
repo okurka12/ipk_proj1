@@ -46,7 +46,16 @@ enum gexit_statement {
     GE_UNREG_PTR,
 
     /* free internal gexit resources (this wipes registered pointers) */
-    GE_FREE_RES
+    GE_FREE_RES,
+
+    /* registers the listener thread id so the thread can be terminated */
+    GE_SET_LISTHR,
+
+    /* registers the listener thread lock (so that it can be finished) */
+    GE_SET_LISMTX,
+
+    /* unregisters both listener thread id and its lock */
+    GE_UNSET_LISTNR
 
 };
 

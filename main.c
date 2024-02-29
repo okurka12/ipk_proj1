@@ -122,6 +122,7 @@ int main_udp(conf_t *conf) {
     /* crate socket + set timeout*/
     rc = udp_create_socket(conf);
     if (rc != 0) { log(ERROR, "couldn't create socket"); return 1; }
+    gexit(GE_SET_FD, &(conf->sockfd));
     rc = udp_set_rcvtimeo(conf, LISTENER_TIMEOUT);
     if (rc != 0) { log(ERROR, "couldn't set timeout on socket"); return 1; }
 
@@ -144,6 +145,8 @@ int main_udp(conf_t *conf) {
         log(ERROR, "couldnt create listener thread");
         return 1;
     }
+    gexit(GE_SET_LISTHR, &listener_thread_id);
+    gexit(GE_SET_LISMTX, &listener_mtx);
 
     /* send first AUTH message */
     rc = udp_sender_send(&first_msg, conf, &cnfm_data);
@@ -153,6 +156,7 @@ int main_udp(conf_t *conf) {
     /* wait for the listener thread */
     log(DEBUG, "waiting for listener thread");
     thrd_join(listener_thread_id, NULL);
+    gexit(GE_UNSET_LISTNR, NULL);
 
     logf(INFO, "REPLY came from port %hu", conf->port);
 
@@ -163,9 +167,11 @@ int main_udp(conf_t *conf) {
         log(ERROR, "couldn't create listener thread");
         return 1;
     }
+    gexit(GE_SET_LISTHR, &listener_thread_id);
+    gexit(GE_SET_LISMTX, &listener_mtx);
 
     /* sleep before sending msg2 */
-    // sleep_ms(400);
+    getchar();
 
     /* now that listener is started and will be confirming messages,
     we can send messages */
@@ -183,6 +189,7 @@ int main_udp(conf_t *conf) {
     /* wait for it to finish */
     log(DEBUG, "waiting for listener thread");
     thrd_join(listener_thread_id, NULL);
+    gexit(GE_UNSET_LISTNR, NULL);
 
     /* cleanup */
     mtx_destroy(&listener_mtx);

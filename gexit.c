@@ -24,6 +24,7 @@
 #include <unistd.h>  // close
 #include <stdlib.h>  // free
 #include <stdbool.h>
+#include <threads.h>  // thrd_error constant, mtx_t type, unlock listener lock
 
 
 // these wont be necessary ig
@@ -137,6 +138,9 @@ void gexit(enum gexit_statement statement, void *p) {
     static void **ptrs = NULL;
     static unsigned int ptrs_len = 0;
 
+    static int listener_thread_id = thrd_error;
+    static mtx_t *listener_lock = NULL;
+
     /* todo: remove this */
     (void)sockfd;
     (void)confp;
@@ -153,6 +157,19 @@ void gexit(enum gexit_statement statement, void *p) {
 
     case GE_REGISTER_PTR:
         gexit_regptr(&ptrs, &ptrs_len, p);
+        break;
+
+    case GE_SET_LISTHR:
+        listener_thread_id = *((int *)p);
+        break;
+
+    case GE_SET_LISMTX:
+        listener_lock = (mtx_t *)p;
+        break;
+
+    case GE_UNSET_LISTNR:
+        listener_lock = NULL;
+        listener_thread_id = thrd_error;
         break;
 
     case GE_UNREG_PTR:
@@ -172,6 +189,11 @@ void gexit(enum gexit_statement statement, void *p) {
         int rc = 0;
         /*todo:cleanup (done ig?)*/
         if (sockfd != -1) close(sockfd);
+        if (listener_lock != NULL) {
+            mtx_unlock(listener_lock);
+            log(DEBUG, "gexit: waiting for listener thread...");
+            thrd_join(listener_thread_id, NULL);
+        }
         gexit_free_all(&ptrs, &ptrs_len);
         exit(rc);
 
