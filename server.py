@@ -177,7 +177,6 @@ def recv_loop(sock: socket.socket) -> None:
             reply[1] = response[1]
             reply[2] = response[2]
             reply_socket.sendto(reply, retaddr)
-            continue
 
             time.sleep(0.05)
 
