@@ -2,3 +2,4 @@ ipk24chat-client
 *.o
 *.bin
 change_date.py
+tmp.txt
