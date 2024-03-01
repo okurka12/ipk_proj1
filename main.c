@@ -150,7 +150,7 @@ int main_udp(conf_t *conf) {
 
     /* send first AUTH message */
     rc = udp_sender_send(&first_msg, conf, &cnfm_data);
-    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
 
 
     /* wait for the listener thread */
@@ -176,12 +176,12 @@ int main_udp(conf_t *conf) {
     /* now that listener is started and will be confirming messages,
     we can send messages */
     rc = udp_sender_send(&msg2, conf, &cnfm_data);
-    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
     // sleep_ms(400);
     rc = udp_sender_send(&last_msg, conf, &cnfm_data);
-    if (rc != 0) { log(ERROR, "couldn't send"); return 1; }
+    if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
 
-
+    cleanup:
 
     /* let listener finish */
     mtx_unlock(&listener_mtx);
@@ -222,7 +222,8 @@ int main(int argc, char *argv[]) {
     if (not args_ok(argc, argv, &conf)) {
         log(ERROR, "bad arguments (or no memory?)");
         free(conf.addr);
-        return ERR_BAD_ARG;
+        rc = ERR_BAD_ARG;
+        goto cleanup;
     }
 
     if (resolve_hostname(&conf) != 0) {
@@ -242,7 +243,8 @@ int main(int argc, char *argv[]) {
         log(FATAL, "tcp version not implemented yet");
     }
 
-    /* cleanup */
+    cleanup:
+    log(DEBUG, "cleaning up");
     gexit(GE_UNSET_FD, NULL);
     close(conf.sockfd);
     gexit(GE_FREE_RES, NULL);
