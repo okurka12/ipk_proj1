@@ -46,14 +46,16 @@
 
 void *mmal(size_t size) {
     void *p = malloc(size);
+    p = value(p);
     gexit(GE_REGISTER_PTR, p);
-    return value(p);
+    return p;
 }
 
 void *mcal(size_t nmemb, size_t size) {
     void *p = calloc(nmemb, size);
+    p = value(p);
     gexit(GE_REGISTER_PTR, p);
-    return value(p);
+    return p;
 }
 
 void mfree(void *p) {
