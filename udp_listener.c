@@ -78,6 +78,8 @@ int udp_listener(void *args) {
         return 0;
     }
 
+    int rc = 0;
+
     /* bsd socket api stuff */
     struct sockaddr_in respaddr;
     socklen_t respaddr_len = AS_SIZE;
@@ -91,6 +93,7 @@ int udp_listener(void *args) {
     int mtx_rc = mtx_trylock(mtx);
     if (mtx_rc == thrd_success) {
         mtx_unlock(mtx);
+        rc = 0;
         break;
     }
 
@@ -128,6 +131,7 @@ int udp_listener(void *args) {
         logf(DEBUG, "AUTH msg id=%hu, was confirmed from port %hu, "
             "changing conf->port", auth_msgid, respaddr_port);
         conf->port = respaddr_port;
+        rc = 0;
         break;
     }
 
@@ -142,7 +146,8 @@ int udp_listener(void *args) {
         if (result == -1) {
             perror("sendto failed");
             log(ERROR, "sendto failed");
-            return 1;
+            rc = 1;
+            break;
         }
     }
     if (resp_mtype == MTYPE_BYE) {
@@ -158,6 +163,6 @@ int udp_listener(void *args) {
     mfree(sa);
 
     log(DEBUG, "listener done...");
-    return 0;
+    return rc;
 
 }
