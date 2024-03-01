@@ -16,7 +16,7 @@
 */
 
 #include "ipk24chat.h"
-#include "udp_confirmer.h"
+#include "udp_confirmer.h"  // udp_cnfm_data_t
 
 #ifndef _U_D_P_S_E_N_D_E_R_H_
 #define _U_D_P_S_E_N_D_E_R_H_
