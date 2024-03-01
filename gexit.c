@@ -24,7 +24,7 @@
 #include <unistd.h>  // close
 #include <stdlib.h>  // free
 #include <stdbool.h>
-#include <threads.h>  // thrd_error constant, mtx_t type, unlock listener lock
+#include <threads.h>  // types, unlock listener lock
 
 
 // these wont be necessary ig
@@ -138,7 +138,7 @@ void gexit(enum gexit_statement statement, void *p) {
     static void **ptrs = NULL;
     static unsigned int ptrs_len = 0;
 
-    static int listener_thread_id = thrd_error;
+    static thrd_t listener_thread_id = 0;
     static mtx_t *listener_lock = NULL;
 
     /* todo: remove this */
@@ -160,7 +160,7 @@ void gexit(enum gexit_statement statement, void *p) {
         break;
 
     case GE_SET_LISTHR:
-        listener_thread_id = *((int *)p);
+        listener_thread_id = *((thrd_t *)p);
         break;
 
     case GE_SET_LISMTX:
