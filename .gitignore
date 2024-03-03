@@ -3,3 +3,4 @@ ipk24chat-client
 *.bin
 change_date.py
 tmp.txt
+edepend.py

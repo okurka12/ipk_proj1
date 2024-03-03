@@ -39,6 +39,7 @@
 #include "udp_sender.h"
 #include "sleep_ms.h"
 #include "mmal.h"  // todo: remove this after moving udp_main
+#include "shell.h"
 
 mtx_t gcl;
 
@@ -201,6 +202,10 @@ int main_udp(conf_t *conf) {
 
 
 int main(int argc, char *argv[]) {
+
+    /* test shell and exit */
+    udp_shell(NULL);
+    return 0;
 
     if (mtx_init(&gcl, mtx_plain) == thrd_error) {
         log(FATAL, "couldnt initialize global lock");

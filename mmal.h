@@ -18,6 +18,8 @@
 */
 
 #include <stddef.h>  // size_t
+#include <sys/types.h>  // ssize_t
+#include <stdio.h>  // FILE
 
 #ifndef _M_M_A_L_H_
 #define _M_M_A_L_H_
@@ -30,6 +32,9 @@ void *mcal(size_t nmemb, size_t size);
 
 /* like free, but also unregisters the pointer in the gexit module */
 void mfree(void *ptr);
+
+/* like getline, but also unregisters the pointer in the gexit module */
+ssize_t mgetline(char **lineptr, size_t *n, FILE *fp);
 
 
 #endif  // ifndef _M_M_A_L_H_

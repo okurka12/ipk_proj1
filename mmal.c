@@ -15,7 +15,8 @@
  * implementatiom
  *
 */
-
+#define _POSIX_C_SOURCE 200809L  // getline
+#include <assert.h>
 #include <stdlib.h>
 /**
  * following construct enables testing for when malloc returns NULL
@@ -61,4 +62,19 @@ void *mcal(size_t nmemb, size_t size) {
 void mfree(void *p) {
     gexit(GE_UNREG_PTR, p);
     free(p);
+}
+
+ssize_t mgetline(char **lineptr, size_t *n, FILE *fp) {
+    assert(lineptr != NULL);
+    ssize_t rc = getline(lineptr, n, fp);
+    gexit(GE_REGISTER_PTR, *lineptr);
+    return rc;
+
+    /**
+     * note: lineptr needs to be feed even
+     * if getline fails - see getline(3)
+     *
+     * also, this function behaves normally even when TEST_MALLOC_NULL
+     * is defined, couldn't find a way to simulate getline failure
+    */
 }
