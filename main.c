@@ -53,8 +53,8 @@ int resolve_hostname(conf_t *conf) {
     hints.ai_family = AF_INET;  // IPv4
     hints.ai_socktype = SOCK_DGRAM;  // UDP
     if (getaddrinfo(conf->addr, NULL, &hints, &result) != 0) {
-        perror("getaddrinfo error");
-        logf(ERROR, "getaddrinfo error for address '%s'", conf->addr);
+        perror("getaddrinfo");
+        logf(ERROR, "getaddrinfo couldn't resolve hostname '%s'", conf->addr);
         return 1;
     }
 
@@ -122,10 +122,16 @@ int main_udp(conf_t *conf) {
 
     /* crate socket + set timeout*/
     rc = udp_create_socket(conf);
-    if (rc != 0) { log(ERROR, "couldn't create socket"); return 1; }
+    if (rc != 0) {
+        log(ERROR, "couldn't create socket");
+        return ERR_INTERNAL;
+    }
     gexit(GE_SET_FD, &(conf->sockfd));
     rc = udp_set_rcvtimeo(conf, LISTENER_TIMEOUT);
-    if (rc != 0) { log(ERROR, "couldn't set timeout on socket"); return 1; }
+    if (rc != 0) {
+        log(ERROR, "couldn't set timeout on socket");
+        return ERR_INTERNAL;
+    }
 
     /* start listener thread (only to return immediately after receiving
     a CONFIRM message for `first_msg`, the lock isn't unlocked by listener) */
@@ -144,14 +150,14 @@ int main_udp(conf_t *conf) {
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
         log(ERROR, "couldnt create listener thread");
-        return 1;
+        return ERR_INTERNAL;
     }
     gexit(GE_SET_LISTHR, &listener_thread_id);
     gexit(GE_SET_LISMTX, &listener_mtx);
 
     /* send first AUTH message */
     rc = udp_sender_send(&first_msg, conf, &cnfm_data);
-    if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
+    if (rc != 0) { log(ERROR, "couldn't send"); goto cleanup; }
 
 
     /* wait for the listener thread */
@@ -166,7 +172,7 @@ int main_udp(conf_t *conf) {
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
         log(ERROR, "couldn't create listener thread");
-        return 1;
+        return ERR_INTERNAL;
     }
     gexit(GE_SET_LISTHR, &listener_thread_id);
     gexit(GE_SET_LISMTX, &listener_mtx);
@@ -195,6 +201,8 @@ int main_udp(conf_t *conf) {
     /* cleanup */
     mtx_destroy(&listener_mtx);
     mfree(cnfm_data.arr);
+    gexit(GE_UNSET_FD, NULL);
+    close(conf->sockfd);
 
     log(INFO, "udp client done");
     return rc;
@@ -204,11 +212,18 @@ int main_udp(conf_t *conf) {
 int main(int argc, char *argv[]) {
 
     /* test shell and exit */
-    udp_shell(NULL);
-    return 0;
+    // udp_shell(NULL);
+    // return 0;
 
+    /* initialize the global lock */
     if (mtx_init(&gcl, mtx_plain) == thrd_error) {
         log(FATAL, "couldnt initialize global lock");
+        return 1;
+    }
+
+    /* register the interrupt handler */
+    if (signal(SIGINT, handle_interrupt) == SIG_ERR) {
+        log(FATAL, "couldnt register signal handler");
         return 1;
     }
 
@@ -216,30 +231,28 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
     logf(DEBUG, "random number: %d", rand());
 
-    /* register the interrupt handler */
-    signal(SIGINT, handle_interrupt);
-
     /* return code */
     int rc = 0;
 
+    /* important: initialize configuration structure */
     conf_t conf = { .addr = NULL, .sockfd = -1 };
 
     if (not args_ok(argc, argv, &conf)) {
         log(ERROR, "bad arguments (or no memory?)");
-        free(conf.addr);
         rc = ERR_BAD_ARG;
         goto cleanup;
     }
-
-    if (resolve_hostname(&conf) != 0) {
-        logf(ERROR, "couldn't resolve host %s", conf.addr);
-    }
-
     if (conf.should_print_help) {
         printf(USAGE LF);
         printf(HELP_TXT LF);
         free(conf.addr);
         return 0;
+    }
+
+    if (resolve_hostname(&conf) != 0) {
+        logf(ERROR, "couldn't resolve host %s", conf.addr);
+        rc = ERR_HOSTNAME;
+        goto cleanup;
     }
 
     if (conf.tp == UDP) {
@@ -250,8 +263,6 @@ int main(int argc, char *argv[]) {
 
     cleanup:
     log(DEBUG, "cleaning up");
-    gexit(GE_UNSET_FD, NULL);
-    close(conf.sockfd);
     gexit(GE_FREE_RES, NULL);
     free(conf.addr);
 

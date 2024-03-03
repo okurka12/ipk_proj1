@@ -34,8 +34,13 @@
 #define CRLF "\r\n"
 #define LF "\n"
 
+/* bad arguments to the program */
 #define ERR_BAD_ARG 13
-#define ERR_NOTCONF 19
+
+/* couldn't resolve the hostname */
+#define ERR_HOSTNAME 14
+
+/* internal error (couldn't allocate memory, open socket etc.) */
 #define ERR_INTERNAL 99
 
 #define DEFAULT_PORT 4567
