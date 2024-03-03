@@ -14,7 +14,7 @@ INCLUDE_SELF = True
 
 # get .c files
 files = os.listdir(".")
-files = [file for file in files if ".c" in file]
+files = [file for file in files if file.endswith(".c")]
 
 dependecies = {}
 
