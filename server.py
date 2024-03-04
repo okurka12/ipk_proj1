@@ -142,14 +142,14 @@ def recv_loop(sock: socket.socket) -> None:
         # wait for the message
         try:
             response, retaddr = sock.recvfrom(2048)
-            print(f"Message came to port {UDP_PORT}")
+            print(f"\nMessage came to port {UDP_PORT}")
             came_to_default_port = True
         except TimeoutError:
             pass
         if not came_to_default_port:
             try:
                 response, retaddr = sock_dynport.recvfrom(2048)
-                print("Message came to port dyn2")
+                print("\nMessage came to port dyn2")
                 came_to_dynamic_port = True
             except TimeoutError:
                 pass
@@ -162,7 +162,6 @@ def recv_loop(sock: socket.socket) -> None:
         # print on stdout
         print(f"MESSAGE from {retaddr[0]}:{retaddr[1]}:")
         print(msg)
-        print()
 
         # sleep for 50 ms
         # time.sleep(0.1)
@@ -181,8 +180,9 @@ def recv_loop(sock: socket.socket) -> None:
             time.sleep(0.05)
 
             # send another message
-            print("sending REPLY message")
-            arr = [1, 0, 1]
+            reply_id = 23  # from 0 to 255
+            print(f"sending REPLY (id={reply_id}) for msg id={msg.id}")
+            arr = [1, 0, reply_id]
             arr.extend([ord(c) for c in "ahoj toto je zprava typu REPLY"])
             reply = bytearray(arr)
             reply_socket.sendto(reply, retaddr)
