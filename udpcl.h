@@ -58,4 +58,9 @@ int udp_create_socket(conf_t *conf);
  */
 int udp_set_rcvtimeo(conf_t *conf, unsigned int ms);
 
+/**
+ * handles all the stuf for the UDP variant
+*/
+int udp_main(conf_t *conf);
+
 #endif  // ifndef _U_D_P_C_L_H_

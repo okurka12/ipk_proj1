@@ -35,14 +35,9 @@
 #include "gexit.h"
 #include "mmal.h"
 #include "udp_render.h"
-
-/* addres struct for sendto */
-// #define SSA struct sockaddr
-
-/* size of the addres structure (`struct sockaddr_in`) */
-// #define AS_SIZE sizeof(struct sockaddr_in)
-
-
+#include "udp_confirmer.h"  // udp_cnfm_t
+#include "udp_listener.h"  // LISTENER_TIMEOUT
+#include "udp_sender.h"  // udp_send
 
 
 int udp_set_rcvtimeo(conf_t *conf, unsigned int ms) {
@@ -74,145 +69,105 @@ int udp_create_socket(conf_t *conf) {
 }
 
 
-/** todo: remove this?
- * Private: waits for confirmation of `msg`, saves the source port of the
- * incoming message to `resp_port` (if it isn't NULL)
- * @param sockfd
- * @param msg
- * @param resp_port
- * @return true if message was confirmed, false if it was not (timed out or
- * invalid)
-*/
-// bool udp_wait_for_confirm(int sockfd, msg_t *msg, uint16_t *resp_port) {
+int udp_main(conf_t *conf) {
 
-//     /* buffer for incoming data */
-//     char *reply = (char *)mmal(RESPONSE_BUFSIZE);
-//     if (reply == NULL) {
-//         perror(MEMFAIL_MSG);
-//         log(ERROR, MEMFAIL_MSG);
-//         return 0;
-//     }
+    int rc = 0;
+    udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
 
-//     /* bsd socket api stuff */
-//     struct sockaddr_in respaddr;
-//     socklen_t respaddr_len = AS_SIZE;
+    /* hard coded message data */
+    msg_t first_msg = { .type = MTYPE_AUTH, .id = 2, .username = "xpavli0a",
+        .dname = "vita", .secret = "a38c9ccc-9934-4603-afc8-33d9db47c66c" };
+    msg_t msg2 = { .type = MTYPE_JOIN, .id = 3, .chid = "discord.general",
+        .dname = "vita" };
+    msg_t last_msg = { .type = MTYPE_BYE, .id = 4 };
+    (void)first_msg;
+    (void)msg2;
+    (void)last_msg;
 
-//     /* recvfrom */
-//     int received_bytes = recvfrom(sockfd, reply, RESPONSE_BUFSIZE, 0,
-//         (SSA *)&respaddr, &respaddr_len);
-//     if (received_bytes == -1) {
-//         logf(DEBUG, "timed out (errno %d)", errno);  // EAGAIN - socket(7)
-//         mfree(reply);
-//         return 0;
-//     }
+    /* crate socket + set timeout*/
+    rc = udp_create_socket(conf);
+    if (rc != 0) {
+        log(ERROR, "couldn't create socket");
+        return ERR_INTERNAL;
+    }
+    gexit(GE_SET_FD, &(conf->sockfd));
+    rc = udp_set_rcvtimeo(conf, LISTENER_TIMEOUT);
+    if (rc != 0) {
+        log(ERROR, "couldn't set timeout on socket");
+        return ERR_INTERNAL;
+    }
 
-//     /* extract the address and portl */
-//     char *respaddr_str = inet_ntoa(respaddr.sin_addr);
-//     if (resp_port != NULL) { *resp_port = ntohs(respaddr.sin_port); }
+    /* start listener thread (only to return immediately after receiving
+    a CONFIRM message for `first_msg`, the lock isn't unlocked by listener) */
+    log(DEBUG, "MAIN: starting listener");
+    thrd_t listener_thread_id;
+    mtx_t listener_mtx;
+    mtx_init(&listener_mtx, mtx_plain);
+    mtx_lock(&listener_mtx);
+    listener_args_t listener_args = {
+        .conf = conf,
+        .cnfm_data = &cnfm_data,
+        .mtx = &listener_mtx,
+        .save_port = true,
+        .auth_msg_id = first_msg.id
+    };
+    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
+    if (rc != thrd_success) {
+        log(ERROR, "couldnt create listener thread");
+        return ERR_INTERNAL;
+    }
+    gexit(GE_SET_LISTHR, &listener_thread_id);
+    gexit(GE_SET_LISMTX, &listener_mtx);
 
-//     logf(DEBUG, "received %d bytes from %s:%hu", received_bytes, respaddr_str,
-//         ntohs(respaddr.sin_port));
-
-//     /* extract IPK24 message header */
-//     uint8_t reply_type = reply[0];
-//     uint16_t reply_msgid = read_msgid(reply + 1);
-
-//     /* get rid of data (all is extracted) */
-//     mfree(reply); reply = NULL;
-
-//     /* was it the confirm we were looking for? */
-//     if (reply_msgid != msg->id || reply_type != MTYPE_CONFIRM) {
-//         logf(DEBUG, "message type=%s, id=%hu ignored", mtype_str(reply_type),
-//             reply_msgid);
-//         return 0;
-//     }
-
-//     /* message successfully confirmed */
-//     return 1;
-// }
+    /* send first AUTH message */
+    rc = udp_sender_send(&first_msg, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); goto cleanup; }
 
 
-// int udp_send_msg(msg_t *msg, conf_t *conf) {
+    /* wait for the listener thread */
+    log(DEBUG, "waiting for listener thread");
+    thrd_join(listener_thread_id, NULL);
+    gexit(GE_UNSET_LISTNR, NULL);
 
-//     assert(conf->sockfd != -1);
+    logf(INFO, "REPLY came from port %hu", conf->port);
 
-//     logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
-//          msg->id, conf->addr, conf->port);
+    /* start listener again, but now for real */
+    listener_args.save_port = false;
+    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
+    if (rc != thrd_success) {
+        log(ERROR, "couldn't create listener thread");
+        return ERR_INTERNAL;
+    }
+    gexit(GE_SET_LISTHR, &listener_thread_id);
+    gexit(GE_SET_LISMTX, &listener_mtx);
 
-//     /* process address */
-//     SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
-//     if (sa == NULL) return 1;
+    /* sleep before sending msg2 */
+    getchar();
 
-//     /* render message */
-//     unsigned int length = 0;
-//     char *data = udp_render_message(msg, &length);
-//     if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
+    /* now that listener is started and will be confirming messages,
+    we can send messages */
+    rc = udp_sender_send(&msg2, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
+    // sleep_ms(400);
+    rc = udp_sender_send(&last_msg, conf, &cnfm_data);
+    if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
 
-//     /* send message */
-//     ssize_t result = sendto(conf->sockfd, data, length, 0, sa, AS_SIZE);
-//     if (result == -1) {
-//         perror("sendto failed");
-//         log(ERROR, "sendto failed");
-//         return 1;
-//     }
-//     return 0;
+    cleanup:
 
-//     /* cleanup */
-//     mfree(sa);
-//     mfree(data);
+    /* let listener finish */
+    mtx_unlock(&listener_mtx);
 
-//     return 0;
-// }
+    /* wait for it to finish */
+    log(DEBUG, "waiting for listener thread");
+    thrd_join(listener_thread_id, NULL);
+    gexit(GE_UNSET_LISTNR, NULL);
 
-/* todo: get rid of this */
-// int udp_send_and_confirm(msg_t *msg, conf_t *conf) {
+    /* cleanup */
+    mtx_destroy(&listener_mtx);
+    mfree(cnfm_data.arr);
+    gexit(GE_UNSET_FD, NULL);
+    close(conf->sockfd);
 
-
-//     logf(INFO, "sending %s id=%hu to %s:%hu", mtype_str(msg->type),
-//          msg->id, conf->addr, conf->port);
-
-//     /* process address */
-//     SSA *sa = udp_get_addrstruct(conf->addr, conf->port);
-//     if (sa == NULL) return 1;
-
-//     /* create socket */
-//     int sockfd = udp_create_socket(conf);
-//     if (sockfd == -1) return 1;
-//     gexit(GE_SET_FD, &sockfd);
-
-//     /* render message */
-//     unsigned int length = 0;
-//     char *data = udp_render_message(msg, &length);
-//     if (data == NULL) { log(ERROR, "couldn't render message"); return 1; }
-
-//     bool confirmed = false;
-
-//     unsigned int i;
-//     for (i = 1; i < conf->retries + 1; i++) {
-//         logf(DEBUG, "sending msg id %hu (attempt: %u)", msg->id, i);
-
-//         /* send the packet */
-//         udp_send(sockfd, sa, data, length);
-
-//         /* wait for CONFIRM (no need to bind) */
-//         confirmed = udp_wait_for_confirm(sockfd, msg, &conf->port);
-//         if (confirmed) {
-//             break;
-//         }
-//     }
-
-//     /* cleanup */
-//     gexit(GE_UNSET_FD, &sockfd);
-//     close(sockfd);
-//     mfree(sa);
-//     mfree(data);
-
-//     if (confirmed) {
-//         logf(INFO, "confirmed in %u attempts", i);
-//         return 0;
-//     } else {
-//         logf(WARNING, "couldn't confirm msg %hu in %u attempts", msg->id, --i);
-//         return ERR_NOTCONF;
-//     }
-// }
-
+    log(INFO, "udp client done");
+    return rc;
+}

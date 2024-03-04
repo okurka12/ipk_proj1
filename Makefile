@@ -36,7 +36,7 @@ udp_confirmer.o udp_listener.o sleep_ms.o udp_sender.o shell.o
 ALL: $(RESULT_BINARY)
 
 udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h gexit.h mmal.h \
-udp_render.h
+udp_render.h udp_confirmer.h udp_listener.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rwmsgid.o: rwmsgid.c rwmsgid.h
