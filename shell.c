@@ -48,11 +48,14 @@
 #include "utils.h"
 
 /* maximal field length including null byte */
-#define MFL 4096
+#define MFL 8192
 
 /* maximal field length as a string literal
 (one less than MFL, for null byte) */
-#define MFLS "4095"
+#define MFLS "8191"
+
+/* limited in length string (for a buffer-overflow-safe scanf format) */
+#define LLS "%" MFLS "s"
 
 /* strips the trailing line feed of a string if there is one */
 void rstriplf(char *s) {
@@ -93,9 +96,9 @@ int udp_shell(conf_t *conf) {
             fprintf(stderr, "%s\n", MEMFAIL_MSG);
             log(ERROR, MEMFAIL_MSG);
             rc = 1;
-            goto outside_while;
+            goto outside_while;  // double break
         }
-        tmp = sscanf(line, "/auth %" MFLS "s %" MFLS "s %" MFLS "s", username, secret, dname);
+        tmp = sscanf(line, "/auth " LLS " " LLS " " LLS, username, secret, dname);
         if (tmp != 3) {
             log(WARNING, "not a valid /auth command");
             break;  // break just from the switch not the while
