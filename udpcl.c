@@ -38,6 +38,7 @@
 #include "udp_confirmer.h"  // udp_cnfm_t
 #include "udp_listener.h"  // LISTENER_TIMEOUT
 #include "udp_sender.h"  // udp_send
+#include "msg.h"  // msg_t
 
 
 int udp_set_rcvtimeo(conf_t *conf, unsigned int ms) {

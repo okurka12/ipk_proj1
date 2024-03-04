@@ -67,38 +67,6 @@
 /* global client lock (for accessing `conf` or `cnfm_data`) */
 extern mtx_t gcl;
 
-/* message struct */
-typedef struct {
-
-    /* message type (CONFIRM, REPLY, AUTH, JOIN, MSG, ERR, BYE) */
-    uint8_t type;
-
-    /* message id */
-    uint16_t id;
-
-    /* Username (for type AUTH) */
-    char *username;
-
-    /* DisplayName (for type AUTH, JOIN, MSG, ERR) */
-    char *dname;
-
-    /* Channel ID (for type JOIN) */
-    char *chid;
-
-    /* Secret (for type AUTH) */
-    char *secret;
-
-    /* MessageContents (for type REPLY, MSG, ERR) */
-    char *content;
-
-    /* Ref_MessageID (for type CONFIRM, REPLY)*/
-    uint16_t ref_msgid;
-
-    /* Result (for type REPLY) */
-    uint8_t result;
-
-} msg_t;
-
 /* chosen transport protocol */
 enum tp { TCP, UDP, NOT_SPECIFIED };
 

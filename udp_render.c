@@ -17,6 +17,7 @@
 #include "ipk24chat.h"  // msg_t
 #include "rwmsgid.h"  // write_msgid
 #include "utils.h"
+#include "msg.h"  // msg_t
 
 /* allocates `length` to `iden` and checks for NULL */
 #define allocate(iden, length) \

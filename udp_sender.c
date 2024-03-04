@@ -25,6 +25,7 @@
 #include "mmal.h"
 #include "sleep_ms.h"
 #include "udp_confirmer.h"
+#include "msg.h"  // msg_t
 
 /* confirm check interval in miliseconds (after sending, periodically check if
 a message was confirmed, basically active waiting) */

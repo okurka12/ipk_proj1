@@ -11,6 +11,7 @@
 *****************/
 
 #include "ipk24chat.h"
+#include "msg.h"  // msg_t
 
 #ifndef _U_D_P_R_E_N_D_E_R_H_
 #define _U_D_P_R_E_N_D_E_R_H_

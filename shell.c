@@ -42,6 +42,7 @@
 */
 
 #include <stdio.h>  // stdin
+#include <string.h>  // strlen
 #include "mmal.h"  // mgetline
 #include "ipk24chat.h"  // conf_t
 #include "shell.h"
@@ -65,6 +66,15 @@ void rstriplf(char *s) {
     while (s[i + 1] != '\0') i++;
     if (s[i] == '\n') s[i] = '\0';
 }
+
+/* returns if `s` starts with `prefix` */
+bool startswith(char *s, char *prefix) {
+    if (strlen(s) < strlen(prefix)) return false;
+    return strncmp(s, prefix, strlen(prefix)) == 0;
+}
+
+
+// int hscm
 
 
 int udp_shell(conf_t *conf) {
@@ -98,8 +108,10 @@ int udp_shell(conf_t *conf) {
             rc = 1;
             goto outside_while;  // double break
         }
-        tmp = sscanf(line, "/auth " LLS " " LLS " " LLS, username, secret, dname);
+        tmp = sscanf(line, "/auth " LLS " " LLS " " LLS,
+            username, secret, dname);
         if (tmp != 3) {
+            fprintf(stderr, "ERROR: not a valid /auth command");
             log(WARNING, "not a valid /auth command");
             break;  // break just from the switch not the while
         }
