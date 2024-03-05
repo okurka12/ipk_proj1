@@ -29,6 +29,10 @@ enum sstate { SS_START, SS_AUTH, SS_OPEN, SS_ERROR, SS_END };
 (iden) == SS_ERROR ? "SS_ERROR" : \
 (iden) == SS_END ? "SS_END" : "unknown")
 
+/**
+ * Starts a "shell". The shell starts a listener, sends messages. Returns
+ * when reaching the end of user input or upon receiving BYE.
+*/
 int udp_shell(conf_t *conf);
 
 #endif  // ifndef _S_H_E_L_L_H_

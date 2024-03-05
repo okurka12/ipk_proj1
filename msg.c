@@ -27,14 +27,16 @@ msg_t *msg_ctor(void) {
     p->chid = NULL;
     p->content = NULL;
     p->dname = NULL;
+
+    return p;
 }
 
 
 void msg_dtor(msg_t *p) {
-    if (p->secret != NULL) free(p->secret);
-    if (p->username != NULL) free(p->username);
-    if (p->chid != NULL) free(p->chid);
-    if (p->content != NULL) free(p->content);
-    if (p->dname != NULL) free(p->dname);
-    free(p);
+    if (p->secret != NULL) mfree(p->secret);
+    if (p->username != NULL) mfree(p->username);
+    if (p->chid != NULL) mfree(p->chid);
+    if (p->content != NULL) mfree(p->content);
+    if (p->dname != NULL) mfree(p->dname);
+    mfree(p);
 }
