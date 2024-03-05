@@ -90,20 +90,23 @@ int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     assert(auth_msg->secret != NULL);
     int rc;
 
-
     /* start listener thread (only to return immediately after receiving
-    a CONFIRM message for `first_msg`, the lock isn't unlocked by listener) */
+    CONFIRM + REPLY for `auth_msg`, the lock isn't unlocked by listener) */
     log(DEBUG, "MAIN: starting listener");
     thrd_t listener_thread_id;
     mtx_t listener_mtx;
-    mtx_init(&listener_mtx, mtx_plain);
-    mtx_lock(&listener_mtx);
+    bool listener_stop_flag = false;
+    if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
+        log(ERROR, "couldnt initialize lock");
+        return ERR_INTERNAL;
+    }
     listener_args_t listener_args = {
         .conf = conf,
         .cnfm_data = cnfm_data,
         .mtx = &listener_mtx,
         .save_port = true,
-        .auth_msg_id = auth_msg->id
+        .auth_msg_id = auth_msg->id,
+        .stop_flag = &listener_stop_flag
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
@@ -115,16 +118,27 @@ int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
 
     /* send first AUTH message */
     rc = udp_sender_send(auth_msg, conf, cnfm_data);
-    if (rc != 0) { log(ERROR, "couldn't send"); }
+    if (rc != 0) {
+        fprintf(stderr, "ERROR: authentication message wasn't confirmed");
+        log(ERROR, "couldn't send");
+
+        /* let listener finish (else it would wait for the REPLY) */
+        mtx_lock(&listener_mtx);
+        listener_stop_flag = true;
+        mtx_unlock(&listener_mtx);
+    }
 
 
     /* wait for the listener thread */
     log(DEBUG, "waiting for listener thread");
-    thrd_join(listener_thread_id, NULL);
+    int lrc;  // listener return code
+    thrd_join(listener_thread_id, &lrc);
     gexit(GE_UNSET_LISTNR, NULL);
+    mtx_destroy(&listener_mtx);
 
     logf(INFO, "REPLY came from port %hu", conf->port);
-    return 0;
+    logf(INFO, "authentication %s", lrc == 0 ? "successful" : "error");
+    return lrc == 0;
 }
 
 /**
@@ -154,7 +168,7 @@ msg_t *hscm(char *line, enum sstate *state, bool *should_exit) {
             tmp = sscanf(line, "/auth " LLS " " LLS " " LLS,
                 username, secret, dname);
             if (tmp != 3) {
-                fprintf(stderr, "ERROR: not a valid /auth command");
+                fprintf(stderr, "ERROR: not a valid /auth command\n");
                 log(WARNING, "not a valid /auth command");
                 mfree(username); mfree(secret); mfree(dname);
                 *should_exit = false;

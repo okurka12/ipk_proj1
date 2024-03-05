@@ -65,8 +65,15 @@ int udp_listener(void *args) {
     mtx_t *mtx =                 ((listener_args_t *)args)->mtx;
     bool save_port =             ((listener_args_t *)args)->save_port;
     uint16_t auth_msgid =        ((listener_args_t *)args)->auth_msg_id;
+    bool *stop_flag =            ((listener_args_t *)args)->stop_flag;
 
     log(DEBUG, "listener starting");
+
+    /* on the special case when `udp_listener` is called only for obtaining
+    the source port of a response + result of the REPLY, these flags indicate
+    listener to stop looping */
+    bool auth_msg_confirmed = false;
+    bool got_reply = false;
 
     assert(conf->sockfd != -1);
 
@@ -90,12 +97,13 @@ int udp_listener(void *args) {
     log(DEBUG, "listener looping");
 
     /* return if main thread wants us to return */
-    int mtx_rc = mtx_trylock(mtx);
-    if (mtx_rc == thrd_success) {
+    mtx_lock(mtx);
+    if (*stop_flag) {
         mtx_unlock(mtx);
         rc = 0;
         break;
     }
+    mtx_unlock(mtx);
 
     /* recvfrom */
     int received_bytes = recvfrom(conf->sockfd, buf, RESPONSE_BUFSIZE, 0,
@@ -114,6 +122,7 @@ int udp_listener(void *args) {
     uint16_t respaddr_port = ntohs(respaddr.sin_port);
     logf(DEBUG, "received %d bytes from %s:%hu", received_bytes, respaddr_str,
         respaddr_port);
+    (void)respaddr_str;  // suppress warning if NDEBUG is defined
 
     if (received_bytes < 3) {
         logf(INFO, "got only %d byte(s), ignoring", received_bytes);
@@ -124,17 +133,6 @@ int udp_listener(void *args) {
     uint8_t resp_mtype = buf[0];
     uint16_t resp_id = read_msgid(buf + 1);  // id (or ref_id for CONFIRM)
 
-    /* special case: listener only called to obtain the source port of
-    a CONFIRM message to the first AUTH message*/
-    if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
-        udp_cnfm_confirm(auth_msgid, cnfm_data);
-        logf(DEBUG, "AUTH msg id=%hu, was confirmed from port %hu, "
-            "changing conf->port", auth_msgid, respaddr_port);
-        conf->port = respaddr_port;
-        rc = 0;
-        break;
-    }
-
     if (resp_mtype == MTYPE_CONFIRM) {
         logf(DEBUG, "outgoing message id=%hu confirmed", resp_id);
         udp_cnfm_confirm(resp_id, cnfm_data);
@@ -142,14 +140,34 @@ int udp_listener(void *args) {
         logf(DEBUG, "sending CONFIRM for id %hu", resp_id);
         char data[3] = { MTYPE_CONFIRM, 0, 0 };
         write_msgid(data + 1, resp_id);
-        ssize_t result = sendto(conf->sockfd, data, 3, 0, sa, AS_SIZE);
-        if (result == -1) {
+        ssize_t sendto_result = sendto(conf->sockfd, data, 3, 0, sa, AS_SIZE);
+        if (sendto_result == -1) {
             perror("sendto failed");
             log(ERROR, "sendto failed");
-            rc = 1;
+            rc = ERR_INTERNAL;
             break;
         }
     }
+
+    /* special case: save_port */
+    if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
+        logf(DEBUG, "AUTH msg id=%hu, was confirmed from port %hu, "
+            "changing conf->port", auth_msgid, respaddr_port);
+        conf->port = respaddr_port;
+        auth_msg_confirmed = true;
+    }
+    if (save_port and resp_mtype == MTYPE_REPLY) {
+        /* todo: check ref_msgid of the reply */
+        assert(received_bytes >= 7);
+        logf(DEBUG, "got REPLY with ref_msgid=%hu", read_msgid(buf + 4));
+        rc = buf[3] == 1 ? 0 : 1;  // success/failure
+        got_reply = true;
+    }
+    if(save_port and auth_msg_confirmed and got_reply) {
+        break;
+    }
+
+
     if (resp_mtype == MTYPE_BYE) {
         break;
     }

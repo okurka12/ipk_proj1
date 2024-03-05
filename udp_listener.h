@@ -32,11 +32,14 @@
 typedef struct {
     conf_t *conf;
     udp_cnfm_data_t *cnfm_data;
-    mtx_t *mtx;
 
-    /* if this flag is specified, waits for the CONFIRM message for
-    AUTH message of ID `auth_msg_id`, and when it receives that,
-    returns immediately */
+    /* lock for `stop_flag` */
+    mtx_t *mtx;
+    bool *stop_flag;
+
+    /* if this flag is true, waits for the CONFIRM and REPLY, saves
+    source port of the response and returns (`mtx` is not unlocked in this
+    case) */
     bool save_port;
     uint16_t auth_msg_id;
 
