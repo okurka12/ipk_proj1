@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     // return 0;
 
     /* initialize the global lock */
-    if (mtx_init(&gcl, mtx_plain) == thrd_error) {
+    if (mtx_init(&gcl, /*mtx_plain*/ mtx_recursive) == thrd_error) {
         log(FATAL, "couldnt initialize global lock");
         return 1;
     }

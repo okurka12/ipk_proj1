@@ -64,7 +64,7 @@
 "    -h           Print help and exit"
 
 
-/* global client lock (for accessing `conf` or `cnfm_data`) */
+/* global client lock (for accessing `conf`, `cnfm_data`, or `gexit`) */
 extern mtx_t gcl;
 
 /* chosen transport protocol */

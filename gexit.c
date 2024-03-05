@@ -26,6 +26,8 @@
 #include <stdbool.h>
 #include <threads.h>  // types, unlock listener lock
 
+extern mtx_t gcl;
+
 
 // these wont be necessary ig
 // #include <sys/types.h>
@@ -156,7 +158,9 @@ void gexit(enum gexit_statement statement, void *p) {
         break;
 
     case GE_REGISTER_PTR:
+        mtx_lock(&gcl);
         gexit_regptr(&ptrs, &ptrs_len, p);
+        mtx_unlock(&gcl);
         break;
 
     case GE_SET_LISTHR:
@@ -173,7 +177,9 @@ void gexit(enum gexit_statement statement, void *p) {
         break;
 
     case GE_UNREG_PTR:
+        mtx_lock(&gcl);
         gexit_unregptr(&ptrs, &ptrs_len, p);
+        mtx_unlock(&gcl);
         break;
 
     case GE_UNSET_FD:
