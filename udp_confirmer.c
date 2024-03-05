@@ -18,7 +18,9 @@
 #include "mmal.h"
 
 /* disable logging just for this module */
+#ifndef NDEBUG
 #define NDEBUG
+#endif  // ifndef NDEBUG
 #include "utils.h"
 
 /* unlocks `gcl` and returns `rval` */
