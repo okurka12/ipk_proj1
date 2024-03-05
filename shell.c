@@ -156,6 +156,7 @@ msg_t *hscm(char *line, enum sstate *state, bool *should_exit) {
             if (tmp != 3) {
                 fprintf(stderr, "ERROR: not a valid /auth command");
                 log(WARNING, "not a valid /auth command");
+                mfree(username); mfree(secret); mfree(dname);
                 *should_exit = false;
                 return NULL;
             }
