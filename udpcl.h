@@ -22,9 +22,6 @@
 /* buffer size for incoming messages */
 #define RESPONSE_BUFSIZE 65535
 
-/* buffer size for address for recvfrom todo: remove */
-// #define RESPADDR_BUFSIZE 128
-
 /**
  * Sends `msg` (as a AF_INET SOCK_DGRAM - IPv4 UDP packet) to `addr`
  * @param addr

@@ -91,7 +91,7 @@ int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     int rc;
 
     /* start listener thread (only to return immediately after receiving
-    CONFIRM + REPLY for `auth_msg`, the lock isn't unlocked by listener) */
+    both CONFIRM + REPLY for `auth_msg`, stops without the stop flag) */
     log(DEBUG, "MAIN: starting listener");
     thrd_t listener_thread_id;
     mtx_t listener_mtx;
@@ -149,7 +149,7 @@ int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
 msg_t *hscm(char *line, enum sstate *state, bool *should_exit) {
     int tmp;
     msg_t *output = NULL;
-    (void)output;
+
     switch (*state) {
         case SS_START:;  // semicolon to suppress warning
 

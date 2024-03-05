@@ -143,9 +143,7 @@ void gexit(enum gexit_statement statement, void *p) {
     static thrd_t listener_thread_id = 0;
     static mtx_t *listener_lock = NULL;
 
-    /* todo: remove this */
-    (void)sockfd;
-    (void)confp;
+    (void)confp;  /* todo: use this! */
 
     switch (statement) {
 
@@ -193,7 +191,6 @@ void gexit(enum gexit_statement statement, void *p) {
     case GE_TERMINATE:
         log(INFO, "the program was interrupted, exiting");
         int rc = 0;
-        /*todo:cleanup (done ig?)*/
         if (sockfd != -1) close(sockfd);
         if (listener_lock != NULL) {
             mtx_unlock(listener_lock);
@@ -208,11 +205,5 @@ void gexit(enum gexit_statement statement, void *p) {
         ptrs = NULL;
         break;
 
-    /* todo: all the other cases */
-
-    /* shouldn't happen */
-    default:
-        logf(ERROR, "gexit called with invalid statement: %d", statement);
-        break;
     }
 }
