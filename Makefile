@@ -18,6 +18,7 @@ LOGLEVEL=DEBUG
 
 # uncomment this to enable adress sanitizer
 # ASAN=-fsanitize=address
+# ASAN=-fsanitize=thread  # doesn't work?
 
 RESULT_BINARY=ipk24chat-client
 
@@ -36,7 +37,7 @@ udp_confirmer.o udp_listener.o sleep_ms.o udp_sender.o shell.o msg.o
 ALL: $(RESULT_BINARY)
 
 udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h gexit.h mmal.h \
-udp_render.h udp_confirmer.h udp_listener.h
+udp_render.h udp_confirmer.h udp_listener.h msg.h shell.h udp_sender.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rwmsgid.o: rwmsgid.c rwmsgid.h
@@ -55,7 +56,8 @@ gexit.o: gexit.c ipk24chat.h gexit.h utils.h
 mmal.o: mmal.c mmal.h gexit.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-udp_render.o: udp_render.c udp_render.h mmal.h ipk24chat.h rwmsgid.h utils.h
+udp_render.o: udp_render.c udp_render.h mmal.h ipk24chat.h rwmsgid.h utils.h \
+msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_listener.o: udp_listener.c udp_listener.h ipk24chat.h udp_confirmer.h \
@@ -68,11 +70,12 @@ udp_confirmer.o: udp_confirmer.c ipk24chat.h udp_confirmer.h mmal.h utils.h
 sleep_ms.o: sleep_ms.c utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-shell.o: shell.c mmal.h ipk24chat.h shell.h utils.h
+shell.o: shell.c mmal.h ipk24chat.h shell.h utils.h msg.h gexit.h \
+udp_listener.h udp_confirmer.h udp_sender.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_sender.o: udp_sender.c udp_sender.h udp_render.h ipk24chat.h utils.h \
-mmal.h sleep_ms.h udp_confirmer.h
+mmal.h sleep_ms.h udp_confirmer.h msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 msg.o: msg.c msg.h mmal.h
