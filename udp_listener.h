@@ -36,9 +36,14 @@ typedef struct {
 
     udp_cnfm_data_t *cnfm_data;
 
-    /* lock for `stop_flag` */
+    /* lock for `stop_flag` and `listener_done` */
     mtx_t *mtx;
+
+    /* setting this flag means listener can stop looping and return */
     bool *stop_flag;
+
+    /* listener sets this flag when its finished */
+    bool *done_flag;
 
     /* if this flag is true, waits for the CONFIRM and REPLY, saves
     source port of the response and returns (`mtx` is not unlocked in this
@@ -53,8 +58,12 @@ typedef struct {
  * confirms messages via `udp_confirmer`,
  * prints messages on stderr, stdout
  *
- * Cycles until it can lock `mtx`, until then it is being blocked
+ * Cycles until the flag `stop_flag` is set, until then it is being blocked
  * LISTENER_TIMEOUT ms at a time
+ *
+ * Also stops looping when it receives BYE or ERR, in that case it sets
+ * `done_flag`
+ *
  * @param args pointer to `listener_args_t`
  * @return 0 on succes 1 on error
 */

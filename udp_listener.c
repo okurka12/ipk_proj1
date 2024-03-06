@@ -12,6 +12,8 @@
 
 /**
  * implementation of the UDP Listener module - see udp_listener.h
+ *
+ * todo: implement correct printing of the messages
 */
 
 #include <assert.h>
@@ -66,6 +68,7 @@ int udp_listener(void *args) {
     bool save_port =             ((listener_args_t *)args)->save_port;
     uint16_t auth_msgid =        ((listener_args_t *)args)->auth_msg_id;
     bool *stop_flag =            ((listener_args_t *)args)->stop_flag;
+    bool *done_flag =            ((listener_args_t *)args)->done_flag;
 
     log(DEBUG, "listener starting");
 
@@ -94,7 +97,7 @@ int udp_listener(void *args) {
 
     /* loop */
     while (true) {
-    // log(DEBUG, "listener looping");  // hardcore debugging
+    // log(DEBUG, "listener looping");  // hardcore debugging (todo: remove)
 
     /* return if main thread wants us to return */
     mtx_lock(mtx);
@@ -133,6 +136,7 @@ int udp_listener(void *args) {
     uint8_t resp_mtype = buf[0];
     uint16_t resp_id = read_msgid(buf + 1);  // id (or ref_id for CONFIRM)
 
+    /* mark outgoing message as confirmed or send CONFIRM */
     if (resp_mtype == MTYPE_CONFIRM) {
         logf(DEBUG, "outgoing message id=%hu confirmed", resp_id);
         udp_cnfm_confirm(resp_id, cnfm_data);
@@ -148,6 +152,8 @@ int udp_listener(void *args) {
             break;
         }
     }
+
+    /* todo: print messages */
 
     /* special case: save_port */
     if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
@@ -167,7 +173,7 @@ int udp_listener(void *args) {
         break;
     }
 
-
+    /* case: server sent BYE */
     if (resp_mtype == MTYPE_BYE) {
         break;
     }
@@ -175,6 +181,11 @@ int udp_listener(void *args) {
     /* todo: keep track of seen messages */
 
     }  // while true
+
+    /* set the flag so main thread knows listener is finished */
+    mtx_lock(mtx);
+    *done_flag = true;
+    mtx_unlock(mtx);
 
     /* get rid of data (all is extracted) */
     mfree(buf); buf = NULL;

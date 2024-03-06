@@ -104,6 +104,7 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     thrd_t listener_thread_id;
     mtx_t listener_mtx;
     bool listener_stop_flag = false;
+    bool listener_done_flag = false;
     if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
         log(ERROR, "couldnt initialize lock");
         return ERR_INTERNAL;
@@ -114,7 +115,8 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
         .mtx = &listener_mtx,
         .save_port = true,
         .auth_msg_id = auth_msg->id,
-        .stop_flag = &listener_stop_flag
+        .stop_flag = &listener_stop_flag,
+        .done_flag = &listener_done_flag
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
@@ -228,6 +230,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     thrd_t listener_thread_id;
     mtx_t listener_mtx;
     bool listener_stop_flag = false;
+    bool listener_done_flag = false;
     if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
         log(ERROR, "couldnt initialize lock");
         return ERR_INTERNAL;
@@ -237,7 +240,8 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         .cnfm_data = cnfm_data,
         .mtx = &listener_mtx,
         .save_port = false,
-        .stop_flag = &listener_stop_flag
+        .stop_flag = &listener_stop_flag,
+        .done_flag = &listener_done_flag
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
@@ -303,7 +307,10 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             msg = NULL;
         }
 
-        /* todo: check whether listener is finished */
+        /* check whether listener is finished */
+        mtx_lock(&listener_mtx);
+        if (listener_done_flag) done = true;
+        mtx_unlock(&listener_mtx);
 
     }  // while not done
 
