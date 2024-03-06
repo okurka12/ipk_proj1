@@ -79,6 +79,9 @@ typedef struct {
     /* ip address or hostname */
     char *addr;
 
+    /* displayname from /auth or /join command */
+    char *dname;
+
     uint16_t port;
     unsigned int timeout;
     unsigned int retries;

@@ -105,12 +105,8 @@ do { \
 
 int main(int argc, char *argv[]) {
 
-    /* test shell and exit */
-    // udp_shell(NULL);
-    // return 0;
-
     /* initialize the global lock */
-    if (mtx_init(&gcl, /*mtx_plain*/ mtx_recursive) == thrd_error) {
+    if (mtx_init(&gcl, mtx_recursive) == thrd_error) {
         log(FATAL, "couldnt initialize global lock");
         return 1;
     }
@@ -129,7 +125,7 @@ int main(int argc, char *argv[]) {
     int rc = 0;
 
     /* important: initialize configuration structure */
-    conf_t conf = { .addr = NULL, .sockfd = -1 };
+    conf_t conf = { .addr = NULL, .sockfd = -1, .dname = NULL };
 
     if (not args_ok(argc, argv, &conf)) {
         log(ERROR, "bad arguments (or no memory?)");
