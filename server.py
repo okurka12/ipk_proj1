@@ -169,6 +169,15 @@ def recv_loop(sock: socket.socket) -> None:
 
         reply_socket = sock_dynport if REPLY_FROM_DYNAMIC_PORT else sock
 
+        # # send BYE (comment out for testing)
+        # if msg.type != "AUTH" and msg.type != "CONFIRM":
+        #     bye_id = 69  # from 0 to 255
+        #     auth_success: int = 1  # 1 - success, 0 - failure
+        #     print(f"sending BYE (id={bye_id})")
+        #     arr = [MSG_INV_TYPES["BYE"], 0, bye_id]
+        #     reply = bytearray(arr)
+        #     reply_socket.sendto(reply, retaddr)
+
         # send CONFIRM and REPLY
         if msg.type != "CONFIRM":
             print(f"confirming msg id={msg.id}")
