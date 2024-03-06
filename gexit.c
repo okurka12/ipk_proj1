@@ -142,6 +142,7 @@ void gexit(enum gexit_statement statement, void *p) {
 
     static thrd_t listener_thread_id = 0;
     static mtx_t *listener_lock = NULL;
+    static *listener_stop_flag = NULL;
 
     (void)confp;  /* todo: use this! */
 
@@ -172,6 +173,11 @@ void gexit(enum gexit_statement statement, void *p) {
     case GE_UNSET_LISTNR:
         listener_lock = NULL;
         listener_thread_id = thrd_error;
+        listener_stop_flag = NULL;
+        break;
+
+    case GE_SET_STPFLG:
+        listener_stop_flag = (bool *)p;
         break;
 
     case GE_UNREG_PTR:
@@ -192,7 +198,13 @@ void gexit(enum gexit_statement statement, void *p) {
         log(INFO, "the program was interrupted, exiting");
         int rc = 0;
         if (sockfd != -1) close(sockfd);
-        if (listener_lock != NULL) {
+        bool c1 = listener_lock != NULL;
+        bool c2 = listener_stop_flag != NULL;
+        bool c3 = listener_thread_id != thrd_error;
+        if (c1 and c2 and c3) {
+            log(DEBUG, "gexit: letting listener finish");
+            mtx_lock(listener_lock);
+            *listener_stop_flag = true;
             mtx_unlock(listener_lock);
             log(DEBUG, "gexit: waiting for listener thread...");
             thrd_join(listener_thread_id, NULL);

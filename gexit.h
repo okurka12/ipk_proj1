@@ -48,14 +48,20 @@ enum gexit_statement {
     /* free internal gexit resources (this wipes registered pointers) */
     GE_FREE_RES,
 
-    /* registers the listener thread id so the thread can be terminated */
+    /* registers the listener thread id so the thread can be terminated
+    (should go with GE_SET_LISMTX, GE_SET_STPFLG)*/
     GE_SET_LISTHR,
 
-    /* registers the listener thread lock (so that it can be finished) */
+    /* registers the listener thread lock (so that it can be finished, should
+    go with GE_SET_STPFLG and GE_SET_LISTHR) */
     GE_SET_LISMTX,
 
+    /* sets the pointer to the listener stop flag (should go with
+    GE_SET_LISTMTX and GE_SET_LISTHR) */
+    GE_SET_STPFLG,
+
     /* unregisters both listener thread id and its lock */
-    GE_UNSET_LISTNR
+    GE_UNSET_LISTNR,
 
 };
 
