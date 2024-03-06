@@ -130,7 +130,7 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     /* send first AUTH message */
     rc = udp_sender_send(auth_msg, conf, cnfm_data);
     if (rc != 0) {
-        fprintf(stderr, "ERROR: authentication message wasn't confirmed");
+        fprintf(stderr, "ERROR: authentication message wasn't confirmed\n");
         log(ERROR, "couldn't send");
 
         /* let listener finish (else it would wait for the REPLY) */
@@ -261,8 +261,15 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     size_t line_length = INIT_LINE_BUFSIZE;
     msg_t *msg = NULL;
 
+    bool should_send_bye = true;
+
     bool done = false;
     while (not done) {
+
+        /* check whether listener is finished */
+        mtx_lock(&listener_mtx);
+        if (listener_done_flag) done = true;
+        mtx_unlock(&listener_mtx);
 
         /* read one line */
         read_chars = getline(&line, &line_length, stdin);
@@ -300,25 +307,27 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
                 break;
             }
 
-            udp_sender_send(msg, conf, cnfm_data);
-            /* todo: check for send success */
+            rc = udp_sender_send(msg, conf, cnfm_data);
+            if (rc != 0) {
+                mtx_lock(&listener_mtx);
+                should_send_bye = not listener_done_flag;
+                mtx_unlock(&listener_mtx);
+                done = true;
+            }
 
             msg_dtor(msg);
             msg = NULL;
         }
 
-        /* check whether listener is finished */
-        mtx_lock(&listener_mtx);
-        if (listener_done_flag) done = true;
-        mtx_unlock(&listener_mtx);
 
     }  // while not done
 
+    if (should_send_bye) {
+        msg_t bye = { .type = MTYPE_BYE, .id = LAST_MSGID };
+        udp_sender_send(&bye, conf, cnfm_data);
+    }
+
     mfree(line);
-
-    msg_t bye = { .type = MTYPE_BYE, .id = LAST_MSGID };
-    udp_sender_send(&bye, conf, cnfm_data);
-
     /* from now we will let the listener finish */
     /**************************************************************************/
 
