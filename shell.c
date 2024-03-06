@@ -396,7 +396,6 @@ int udp_shell(conf_t *conf) {
         } else {
             log(ERROR, "couldn't be authenticated");
         }
-        log(INFO, "authenticated successfuly, i am done...");
     }
 
     udpsh_loop_endlessly(conf, &cnfm_data);
