@@ -30,7 +30,10 @@
 #define RESPONSE_BUFSIZE 65535
 
 typedef struct {
+
+    /* todo: document when and what parts of `conf` does listener write to */
     conf_t *conf;
+
     udp_cnfm_data_t *cnfm_data;
 
     /* lock for `stop_flag` */
