@@ -18,3 +18,5 @@ valgrind -s --track-fds=yes --leak-check=full --show-leak-kinds=all ./ipk24chat-
 v dokumentaci zahrnout:
  - omezeni delky fieldu v shell.c
  - konstanta LISTENER_TIMEOUT
+
+general todo: const qualifiers u ukazatelovych parametru funkci
