@@ -84,7 +84,15 @@ bool startswith(char *s, char *prefix) {
     return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
-int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
+/**
+ * UDP shell - authenticate:
+ * Sets up a listener and sends AUTH message `auth_msg`, waits for both
+ * CONFIRM and REPLY
+ * @return 0 on succes else 1
+ * @note success means the authentication went well, that is
+ * the REPLY result field was 1
+*/
+int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     assert(auth_msg->username != NULL);
     assert(auth_msg->dname != NULL);
     assert(auth_msg->secret != NULL);
@@ -114,6 +122,7 @@ int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
         return ERR_INTERNAL;
     }
     gexit(GE_SET_LISTHR, &listener_thread_id);
+    gexit(GE_SET_STPFLG, &listener_stop_flag);
     gexit(GE_SET_LISMTX, &listener_mtx);
 
     /* send first AUTH message */
@@ -138,67 +147,53 @@ int authenticate(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
 
     logf(INFO, "REPLY came from port %hu", conf->port);
     logf(INFO, "authentication %s", lrc == 0 ? "successful" : "error");
-    return lrc == 0;
+
+    /* authentication success from listener + internal success */
+    return lrc == 0 and rc == 0 ? 0 : 1;
 }
 
 /**
- * handle state, create message
- * should_exit is set to true on error
- * dont forget to check if state isnt ss_end
- */
-msg_t *hscm(char *line, enum sstate *state, bool *should_exit) {
-    int tmp;
+ * @brief Parses /auth command and returns corresponding msg_t
+ * if the command is invalid, returns NULL if there is an internal error,
+ * returns NULL and sets `error_occured` to true
+ * @note returned msg_t needs to be freed with `msg_dtor`
+*/
+msg_t *parse_auth(char *line, bool *error_occured) {
+    int rc = 1;
     msg_t *output = NULL;
 
-    switch (*state) {
-        case SS_START:;  // semicolon to suppress warning
-
-            /* allocate space for the fields */
-            char *username = mmal(MFL);
-            char *secret = mmal(MFL);
-            char *dname = mmal(MFL);
-            if (username == NULL or secret == NULL or dname == NULL) {
-                fprintf(stderr, "%s\n", MEMFAIL_MSG);
-                log(ERROR, MEMFAIL_MSG);
-                *should_exit = true;
-                return NULL;
-            }
-
-            /* parse line */
-            tmp = sscanf(line, "/auth " LLS " " LLS " " LLS,
-                username, secret, dname);
-            if (tmp != 3) {
-                fprintf(stderr, "ERROR: not a valid /auth command\n");
-                log(WARNING, "not a valid /auth command");
-                mfree(username); mfree(secret); mfree(dname);
-                *should_exit = false;
-                return NULL;
-            }
-            logf(DEBUG, "got username=%s secret=%s dname=%s",
-                username, secret, dname);
-
-            /* create msg_t */
-            output = msg_ctor();
-            output->type = MTYPE_AUTH;
-            output->id = 1;
-            output->username = username;
-            output->secret = secret;
-            output->dname = dname;
-            return output;
-
-        break;  // case SS_START
-
-        case SS_OPEN: case SS_AUTH: case SS_ERROR: break;
-
-        case SS_END:
-        log(DEBUG, "got to state END");
-        /* todo todo todo (tady jsem skoncil idk) */
-
+    /* allocate space for the fields */
+    char *username = mmal(MFL);
+    char *secret = mmal(MFL);
+    char *dname = mmal(MFL);
+    if (username == NULL or secret == NULL or dname == NULL) {
+        fprintf(stderr, "%s\n", MEMFAIL_MSG);
+        log(ERROR, MEMFAIL_MSG);
+        *error_occured = true;
+        return NULL;
     }
 
-    /* shouldnt get here */
-    log(WARNING, "shouldn't be possible to get here");
-    return NULL;
+    /* parse line */
+    rc = sscanf(line, "/auth " LLS " " LLS " " LLS,
+        username, secret, dname);
+    if (rc != 3) {
+        fprintf(stderr, "ERROR: not a valid /auth command\n");
+        log(WARNING, "not a valid /auth command");
+        mfree(username); mfree(secret); mfree(dname);
+        *error_occured = false;
+        return NULL;
+    }
+    logf(DEBUG, "got username=%s secret=%s dname=%s",
+        username, secret, dname);
+
+    /* create msg_t */
+    output = msg_ctor();
+    output->type = MTYPE_AUTH;
+    output->id = 1;
+    output->username = username;
+    output->secret = secret;
+    output->dname = dname;
+    return output;
 }
 
 
@@ -208,14 +203,15 @@ int udp_shell(conf_t *conf) {
     ssize_t read_chars = 0;
     msg_t *msg = NULL;
     udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
-    bool should_exit = false;
+    bool error_occured = false;
 
     size_t line_length = INIT_LINE_BUFSIZE;
     char *line = mmal(INIT_LINE_BUFSIZE);
     if (line == NULL) { log(ERROR, MEMFAIL_MSG); return ERR_INTERNAL; }
 
-    while (true) {
-        logf(DEBUG, "shell looping (state: %s)", sstate_str(state));
+    bool authenticated = false;
+    while (not authenticated) {
+        log(DEBUG, "shell authentication looping");
 
         /* read one line (blocking) */
         read_chars = getline(&line, &line_length, stdin);
@@ -223,27 +219,27 @@ int udp_shell(conf_t *conf) {
         rstriplf(line);
         logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
 
-        msg = hscm(line, &state, &should_exit);
-        if (should_exit) { log(INFO, "shell done..."); return ERR_INTERNAL; }
-        if (msg == NULL) { log(WARNING, "no message?"); continue; }
-
-        if (state == SS_START and msg->type == MTYPE_AUTH) {
-            rc = authenticate(conf, msg, &cnfm_data);
-            msg_dtor(msg);
-            msg = NULL;
-            if (rc != 0) {
-                log(ERROR, "couldn't be authenticated");
-            }
-            state = SS_END;
+        /* process the line */
+        msg = parse_auth(line, &error_occured);
+        if (error_occured) {
+            log(INFO, "internal error");
+            return ERR_INTERNAL;
         }
 
+        /* invalid /auth command, try again */
+        if (msg == NULL) continue;
 
-
-
-        if (state == SS_END) {
-            log(DEBUG, "reached state END, breaking...");
-            break;
+        /* try to authenticate with the server */
+        rc = udpsh_auth(conf, msg, &cnfm_data);
+        msg_dtor(msg);
+        msg = NULL;
+        if (rc == 0) {
+            log(INFO, "successfully authenticated");
+            authenticated = true;
+        } else {
+            log(ERROR, "couldn't be authenticated");
         }
+        log(INFO, "authenticated successfuly, i am done...");
     }
 
     mfree(cnfm_data.arr);
