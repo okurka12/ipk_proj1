@@ -142,7 +142,7 @@ void gexit(enum gexit_statement statement, void *p) {
 
     static thrd_t listener_thread_id = 0;
     static mtx_t *listener_lock = NULL;
-    static *listener_stop_flag = NULL;
+    static bool *listener_stop_flag = NULL;
 
     (void)confp;  /* todo: use this! */
 
