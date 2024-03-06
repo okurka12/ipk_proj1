@@ -27,17 +27,6 @@ extern char *optarg;
 #include "utils.h"
 #include "mmal.h"
 
-char *strdup(const char *s) {
-    unsigned int length = strlen(s) + 1;
-    char *output = mmal(length);
-    if (output == NULL) {
-        log(ERROR, MEMFAIL_MSG);
-        return NULL;
-    }
-    strcpy(output, s);
-    return output;
-}
-
 
 bool args_ok(int argc, char *argv[], conf_t *conf) {
 
@@ -78,7 +67,7 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
 
         case 's':
             s_specified = true;
-            conf->addr = strdup(optarg);
+            conf->addr = mstrdup(optarg);
             if (conf->addr == NULL) return false;
             logf(INFO, "parsed address: %s", conf->addr);
             break;
