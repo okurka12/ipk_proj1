@@ -155,6 +155,6 @@ int main(int argc, char *argv[]) {
     log(DEBUG, "cleaning up");
     gexit(GE_FREE_RES, NULL);
     free(conf.addr);
-
+    free(conf.dname);
     return rc;
 }
