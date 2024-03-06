@@ -178,6 +178,12 @@ int udp_listener(void *args) {
         break;
     }
 
+    /* case: server sent ERR */
+    if (resp_mtype == MTYPE_ERR) {
+        /* todo: send bye when received ERR */
+        break;
+    }
+
     /* todo: keep track of seen messages */
 
     }  // while true
