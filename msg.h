@@ -56,6 +56,7 @@ typedef struct {
  * allocates + initializes a msg_t structure on heap with all blank fields,
  * meaning char pointers will be null and integer fields will be zero
  * @note needs to be freed using `msg_dtor`
+ * @return pointer to allocated blang msg_t structure or NULL on failure
 */
 msg_t *msg_ctor(void);
 

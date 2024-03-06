@@ -12,9 +12,11 @@
 
 #include "msg.h"
 #include "mmal.h"
+#include "utils.h"
 
 msg_t *msg_ctor(void) {
     msg_t *p = mmal(sizeof(msg_t));
+    if (p == NULL) { log(ERROR, MEMFAIL_MSG); return NULL; }
 
     p->id = 0;
     p->ref_msgid = 0;
