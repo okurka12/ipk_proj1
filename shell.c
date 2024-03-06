@@ -188,6 +188,7 @@ msg_t *parse_auth(char *line, bool *error_occured) {
 
     /* create msg_t */
     output = msg_ctor();
+    if (output == NULL) { log(ERROR, MEMFAIL_MSG); return NULL; }
     output->type = MTYPE_AUTH;
     output->id = 1;
     output->username = username;
@@ -196,10 +197,135 @@ msg_t *parse_auth(char *line, bool *error_occured) {
     return output;
 }
 
+static inline bool is_join(char *s) {
+    return startswith(s, "/join ");
+}
+
+static inline bool is_rename(char *s) {
+    return startswith(s, "/rename ");
+}
+
+static inline bool is_help(char *s) {
+    return startswith(s, "/help");
+}
+
+
+
+/**
+ * UDP shell - loop endlessly:
+ * starts listener, reads stdin, sends messages,
+ * loops until listener is finished (incoming BYE) or until the end of user
+ * input is reached or until the program is interrupted
+ * @note run this function after the client is successfully authenticated
+ * @return 0 on success else non-zero
+*/
+int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
+    int rc = 0;
+
+    /* start listener*/
+    log(DEBUG, "MAIN: starting listener");
+    thrd_t listener_thread_id;
+    mtx_t listener_mtx;
+    bool listener_stop_flag = false;
+    if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
+        log(ERROR, "couldnt initialize lock");
+        return ERR_INTERNAL;
+    }
+    listener_args_t listener_args = {
+        .conf = conf,
+        .cnfm_data = cnfm_data,
+        .mtx = &listener_mtx,
+        .save_port = false,
+        .stop_flag = &listener_stop_flag
+    };
+    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
+    if (rc != thrd_success) {
+        log(ERROR, "couldnt create listener thread");
+        return ERR_INTERNAL;
+    }
+    gexit(GE_SET_LISTHR, &listener_thread_id);
+    gexit(GE_SET_STPFLG, &listener_stop_flag);
+    gexit(GE_SET_LISMTX, &listener_mtx);
+
+    /**************************************************************************/
+    /* from now on the listener is started */
+
+    ssize_t read_chars = 0;
+    char *line = mmal(INIT_LINE_BUFSIZE);
+    if (line == NULL) { log(ERROR, MEMFAIL_MSG); return ERR_INTERNAL; }
+    size_t line_length = INIT_LINE_BUFSIZE;
+    msg_t *msg = NULL;
+
+    bool done = false;
+    while (not done) {
+
+        /* read one line */
+        read_chars = getline(&line, &line_length, stdin);
+        if (read_chars < 1) {
+            log(INFO, "EOF reached, stopping...");
+            break;
+        }
+        rstriplf(line);
+        logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
+
+        /* /join, /rename, /help or send message*/
+        if (is_join(line)) {
+            /* todo: implement parse_join */
+        } else if (is_rename(line)) {
+            /* todo: implement parse_rename */
+        } else if (is_help(line)) {
+            /* todo: implement printing help */
+        } else {
+            msg = msg_ctor();
+            if (msg == NULL) {
+                log(ERROR, MEMFAIL_MSG);
+                rc = ERR_INTERNAL;
+                break;
+            }
+            msg->type = MTYPE_MSG;
+            msg->id = 269;  /* todo: outgoing message counter */
+            msg->dname = mstrdup(conf->dname);
+            msg->content = mstrdup(line);
+            if (msg->dname == NULL or msg->content == NULL) {
+                log(ERROR, MEMFAIL_MSG);
+                rc = ERR_INTERNAL;
+                break;
+            }
+
+            udp_sender_send(msg, conf, cnfm_data);
+
+            msg_dtor(msg);
+            msg = NULL;
+        }
+
+    }  // while not done
+
+    mfree(line);
+
+
+    /* from now we will let the listener finish */
+    /**************************************************************************/
+
+    /* let listener finish  */
+    mtx_lock(&listener_mtx);
+    listener_stop_flag = true;
+    mtx_unlock(&listener_mtx);
+
+    /* wait for the listener thread */
+    log(DEBUG, "waiting for listener thread");
+    int lrc;  // listener return code
+    thrd_join(listener_thread_id, &lrc);
+    gexit(GE_UNSET_LISTNR, NULL);
+    mtx_destroy(&listener_mtx);
+    logf(INFO, "listener finished with return code %d", lrc);
+    return rc;
+}
+
+
 
 int udp_shell(conf_t *conf) {
     int rc = 0;
-    enum sstate state = SS_START;
+    // enum sstate state = SS_START;
     ssize_t read_chars = 0;
     msg_t *msg = NULL;
     udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
@@ -215,7 +341,7 @@ int udp_shell(conf_t *conf) {
 
         /* read one line (blocking) */
         read_chars = getline(&line, &line_length, stdin);
-        if (read_chars < 1) state = SS_END;
+        if (read_chars < 1) return 0;  // eof
         rstriplf(line);
         logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
 
@@ -231,6 +357,17 @@ int udp_shell(conf_t *conf) {
 
         /* try to authenticate with the server */
         rc = udpsh_auth(conf, msg, &cnfm_data);
+
+        /* extract dname from msg and put a copy of it to conf */
+        char *dname = mstrdup(msg->dname);
+        if (dname == NULL) {
+            log(ERROR, MEMFAIL_MSG);
+            rc = ERR_INTERNAL;
+            break;
+        }
+        assert(conf->dname == NULL);  // until this point conf->dname was NULL
+        conf->dname = dname;          // or at least it should have been
+
         msg_dtor(msg);
         msg = NULL;
         if (rc == 0) {
@@ -241,6 +378,8 @@ int udp_shell(conf_t *conf) {
         }
         log(INFO, "authenticated successfuly, i am done...");
     }
+
+    udpsh_loop_endlessly(conf, &cnfm_data);
 
     mfree(cnfm_data.arr);
     mfree(line);

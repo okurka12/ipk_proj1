@@ -94,7 +94,7 @@ int udp_listener(void *args) {
 
     /* loop */
     while (true) {
-    log(DEBUG, "listener looping");
+    // log(DEBUG, "listener looping");  // hardcore debugging
 
     /* return if main thread wants us to return */
     mtx_lock(mtx);
