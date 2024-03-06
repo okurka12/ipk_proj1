@@ -33,4 +33,7 @@ void *mcal(size_t nmemb, size_t size);
 /* like free, but also unregisters the pointer in the gexit module */
 void mfree(void *ptr);
 
+/* like strdup, but also registers the pointer in the gexit module */
+char *mstrdup(const char *s);
+
 #endif  // ifndef _M_M_A_L_H_

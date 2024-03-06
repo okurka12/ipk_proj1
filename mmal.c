@@ -18,6 +18,9 @@
 #define _POSIX_C_SOURCE 200809L  // getline
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 /**
  * following construct enables testing for when malloc returns NULL
  * malloc itself doesnt return NULL, but mmal does
@@ -25,7 +28,6 @@
 // #define TEST_MALLOC_NULL
 #ifdef TEST_MALLOC_NULL
 
-#include <stdio.h>
 
 /* a chance malloc returns NULL */
 #define TRESHOLD 0.2
@@ -62,4 +64,12 @@ void *mcal(size_t nmemb, size_t size) {
 void mfree(void *p) {
     gexit(GE_UNREG_PTR, p);
     free(p);
+}
+
+char *mstrdup(const char *s) {
+    unsigned int length = strlen(s) + 1;
+    char *output = mmal(length);
+    if (output == NULL) return NULL;
+    strcpy(output, s);
+    return output;
 }
