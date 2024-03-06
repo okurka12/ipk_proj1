@@ -155,7 +155,8 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
 /**
  * @brief Parses /auth command and returns corresponding msg_t
  * if the command is invalid, returns NULL if there is an internal error,
- * returns NULL and sets `error_occured` to true
+ * returns NULL and sets `error_occured` to true. Returned msg_t has
+ * `id` field set to 0 and is expected to be then edited by the caller
  * @note returned msg_t needs to be freed with `msg_dtor`
 */
 msg_t *parse_auth(char *line, bool *error_occured) {
@@ -190,7 +191,7 @@ msg_t *parse_auth(char *line, bool *error_occured) {
     output = msg_ctor();
     if (output == NULL) { log(ERROR, MEMFAIL_MSG); return NULL; }
     output->type = MTYPE_AUTH;
-    output->id = 1;
+    output->id = 0;  // to be edited by caller!
     output->username = username;
     output->secret = secret;
     output->dname = dname;
@@ -283,7 +284,10 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
                 break;
             }
             msg->type = MTYPE_MSG;
-            msg->id = 269;  /* todo: outgoing message counter */
+
+            msg->id = conf->cnt;
+            conf->cnt += 1;
+
             msg->dname = mstrdup(conf->dname);
             msg->content = mstrdup(line);
             if (msg->dname == NULL or msg->content == NULL) {
@@ -293,15 +297,20 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             }
 
             udp_sender_send(msg, conf, cnfm_data);
+            /* todo: check for send success */
 
             msg_dtor(msg);
             msg = NULL;
         }
 
+        /* todo: check whether listener is finished */
+
     }  // while not done
 
     mfree(line);
 
+    msg_t bye = { .type = MTYPE_BYE, .id = LAST_MSGID };
+    udp_sender_send(&bye, conf, cnfm_data);
 
     /* from now we will let the listener finish */
     /**************************************************************************/
@@ -354,6 +363,10 @@ int udp_shell(conf_t *conf) {
 
         /* invalid /auth command, try again */
         if (msg == NULL) continue;
+
+        /* edit the id and increment counter */
+        msg->id = conf->cnt;
+        conf->cnt += 1;
 
         /* try to authenticate with the server */
         rc = udpsh_auth(conf, msg, &cnfm_data);

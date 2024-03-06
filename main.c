@@ -125,7 +125,12 @@ int main(int argc, char *argv[]) {
     int rc = 0;
 
     /* important: initialize configuration structure */
-    conf_t conf = { .addr = NULL, .sockfd = -1, .dname = NULL };
+    conf_t conf = {
+        .addr = NULL,
+        .sockfd = -1,
+        .dname = NULL,
+        .cnt = START_MSGID
+    };
 
     if (not args_ok(argc, argv, &conf)) {
         log(ERROR, "bad arguments (or no memory?)");

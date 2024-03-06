@@ -47,6 +47,12 @@
 #define DEFAULT_TO 250
 #define DEFAULT_RETRIES 3
 
+/* msgid for the first message sent by client */
+#define START_MSGID 69
+
+/* msgid for the last BYE message sent by client */
+#define LAST_MSGID 0xffff
+
 #define STRSTR(x) #x
 #define STR(x) STRSTR(x)
 
@@ -81,6 +87,9 @@ typedef struct {
 
     /* displayname from /auth or /join command */
     char *dname;
+
+    /* outgoing message counter */
+    uint16_t cnt;
 
     uint16_t port;
     unsigned int timeout;
