@@ -5,4 +5,5 @@ change_date.py
 tmp.txt
 edepend.py
 auth.txt
-tcpdump.log
+tcpdump*.log
+real_????.txt
