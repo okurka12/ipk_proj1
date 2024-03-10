@@ -5,9 +5,7 @@
 # https://wiki.python.org/moin/UdpCommunication
 
 import socket
-import time
-import pdb
-
+from random import randint
 
 # what address to listen on
 # BIND_IP = "127.0.0.1"  # localhost (loopback only)
@@ -192,7 +190,21 @@ def recv_loop(sock: socket.socket) -> None:
             auth_success: int = 1  # 1 - success, 0 - failure
             print(f"sending REPLY (id={reply_id}) for msg id={msg.id}")
             arr = [1, 0, reply_id, auth_success, response[1], response[2]]
-            arr.extend([ord(c) for c in "ahoj toto je zprava typu REPLY"])
+            reply_text = f"Hi, {msg.dname}! is a REPLY for msgid={msg.id}"
+            arr.extend([ord(c) for c in reply_text])
+            reply = bytearray(arr)
+            reply_socket.sendto(reply, retaddr)
+
+        if msg.type == "MSG":
+            reply_text = f"this is a reply MSG to " \
+            f"message '{msg.content[:20]}...' :)"
+            id_lb = randint(0, 255)
+            id_mb = randint(0, 255)
+            arr = [MSG_INV_TYPES["MSG"], id_mb, id_lb]
+            arr.extend([ord(c) for c in "Server"])
+            arr.append(0)
+            arr.extend([ord(c) for c in reply_text])
+            arr.append(0)
             reply = bytearray(arr)
             reply_socket.sendto(reply, retaddr)
 
