@@ -94,7 +94,7 @@
 #define min(x, y) ( (x) < (y) ? (x) : (y) )
 
 /* maximum */
-#define min(x, y) ( (x) > (y) ? (x) : (y) )
+#define max(x, y) ( (x) > (y) ? (x) : (y) )
 
 /* memory allocation fail message (print with `report_error()`)*/
 #define MEMFAIL_MSG "couldn't allocate memory"
