@@ -401,11 +401,9 @@ int udp_shell(conf_t *conf) {
         msg_dtor(msg);
         msg = NULL;
         if (rc == 0) {
-            fprintf(stderr, "successfully authenticated\n");
             log(INFO, "successfully authenticated");
             authenticated = true;
         } else {
-            fprintf(stderr, "couldn't be authenticated\n");
             log(ERROR, "couldn't be authenticated");
         }
     }

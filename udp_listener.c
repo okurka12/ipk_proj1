@@ -31,6 +31,7 @@
 #include "mmal.h"
 #include "rwmsgid.h"
 #include "udp_sender.h"
+#include "udp_print_msg.h"
 
 
 /* addres struct for sendto */
@@ -39,8 +40,13 @@
 /* size of the addres structure (`struct sockaddr_in`) */
 #define AS_SIZE sizeof(struct sockaddr_in)
 
-
+/**
+ * Prints `msg` TYPE + ID + the rest of the message in binary to stdout,
+ * but only if `NDEBUG` is NOT defined
+*/
 void print_raw(char *msg, unsigned int len) {
+    #ifndef NDEBUG
+
     if (len > 0) {
         printf("\n%s ", mtype_str(msg[0]));
     }
@@ -56,6 +62,13 @@ void print_raw(char *msg, unsigned int len) {
         }
     }
     printf("\"\n");
+
+    #else  // ifndef NDEBUG
+
+    (void)msg;
+    (void)len;
+
+    #endif  // ifndef NDEBUG
 }
 
 
@@ -80,7 +93,7 @@ int udp_listener(void *args) {
 
     assert(conf->sockfd != -1);
 
-    /* buffer for incoming data */
+    /* buffer for the received data */
     char *buf = (char *)mmal(RESPONSE_BUFSIZE);
     if (buf == NULL) {
         perror(MEMFAIL_MSG);
@@ -141,9 +154,10 @@ int udp_listener(void *args) {
         udp_cnfm_confirm(resp_id, cnfm_data);
     } else {
         logf(DEBUG, "sending CONFIRM for id %hu", resp_id);
-        char data[3] = { MTYPE_CONFIRM, 0, 0 };
-        write_msgid(data + 1, resp_id);
-        ssize_t sendto_result = sendto(conf->sockfd, data, 3, 0, sa, AS_SIZE);
+        char response_data[3] = { MTYPE_CONFIRM, 0, 0 };
+        write_msgid(response_data + 1, resp_id);
+        ssize_t sendto_result =
+            sendto(conf->sockfd, response_data, 3, 0, sa, AS_SIZE);
         if (sendto_result == -1) {
             perror("sendto failed");
             log(ERROR, "sendto failed");
@@ -152,7 +166,7 @@ int udp_listener(void *args) {
         }
     }
 
-    /* todo: print messages */
+    udp_print_msg(buf, received_bytes);
 
     /* special case: save_port */
     if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
