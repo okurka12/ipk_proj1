@@ -181,7 +181,7 @@ msg_t *parse_auth(char *line, bool *error_occured) {
     rc = sscanf(line, "/auth " LLS " " LLS " " LLS,
         username, secret, dname);
     if (rc != 3) {
-        fprintf(stderr, "ERROR: not a valid /auth command\n");
+        fprintf(stderr, "ERR: not a valid /auth command\n");
         log(WARNING, "not a valid /auth command");
         mfree(username); mfree(secret); mfree(dname);
         *error_occured = false;
