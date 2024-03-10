@@ -177,6 +177,7 @@ msg_t *parse_auth(char *line, bool *error_occured) {
     }
 
     /* parse line */
+    /* todo: limit the length of the fields according to assignment */
     rc = sscanf(line, "/auth " LLS " " LLS " " LLS,
         username, secret, dname);
     if (rc != 3) {
