@@ -209,6 +209,7 @@ void gexit(enum gexit_statement statement, void *p) {
             log(DEBUG, "gexit: waiting for listener thread...");
             thrd_join(listener_thread_id, NULL);
         }
+        /* todo: send bye upon SIGINT */
         gexit_free_all(&ptrs, &ptrs_len);
         exit(rc);
 
