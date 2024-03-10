@@ -24,21 +24,16 @@
 #include <unistd.h>  // close
 #include <stdlib.h>  // free
 #include <stdbool.h>
-#include <threads.h>  // types, unlock listener lock
-
-extern mtx_t gcl;
-
-
-// these wont be necessary ig
-// #include <sys/types.h>
-// #include <sys/socket.h>
-// #include <sys/time.h>  // struct timeval
-// #include <netinet/in.h>  // struct sockaddr_in
-// #include <arpa/inet.h>  // htons
+#include <threads.h>  // thrd_join, mtx_unlock...
 
 #include "ipk24chat.h"
 #include "gexit.h"
 #include "utils.h"
+#include "msg.h"
+#include "udp_sender.h"
+#include "udp_confirmer.h"  // udp_cnfm_t
+
+extern mtx_t gcl;
 
 /* how long should the array of the pointers be */
 #define NUM_PTRS 256
@@ -135,6 +130,7 @@ void gexit_free_all(void ***ptrs, unsigned int *len) {
 void gexit(enum gexit_statement statement, void *p) {
     static int sockfd = -1;
     static conf_t *confp = NULL;
+    static udp_cnfm_data_t *cnfmdp = NULL;
 
     /* array of the pointers to free */
     static void **ptrs = NULL;
@@ -143,8 +139,6 @@ void gexit(enum gexit_statement statement, void *p) {
     static thrd_t listener_thread_id = 0;
     static mtx_t *listener_lock = NULL;
     static bool *listener_stop_flag = NULL;
-
-    (void)confp;  /* todo: use this! */
 
     switch (statement) {
 
@@ -194,10 +188,25 @@ void gexit(enum gexit_statement statement, void *p) {
         confp = NULL;
         break;
 
+    case GE_SET_CNFMDP:
+        cnfmdp = (udp_cnfm_data_t *)p;
+        break;
+
+    case GE_UNSET_CNFMDP:
+        cnfmdp = NULL;
+        break;
+
     case GE_TERMINATE:
         log(INFO, "the program was interrupted, exiting");
         int rc = 0;
-        if (sockfd != -1) close(sockfd);
+
+        msg_t last_msg;
+        last_msg.type = MTYPE_BYE;
+        last_msg.id = LAST_MSGID;
+        if (confp != NULL and cnfmdp != NULL) {
+            udp_sender_send(&last_msg, confp, cnfmdp);
+        }
+
         bool c1 = listener_lock != NULL;
         bool c2 = listener_stop_flag != NULL;
         bool c3 = listener_thread_id != thrd_error;
@@ -209,7 +218,8 @@ void gexit(enum gexit_statement statement, void *p) {
             log(DEBUG, "gexit: waiting for listener thread...");
             thrd_join(listener_thread_id, NULL);
         }
-        /* todo: send bye upon SIGINT */
+
+        if (sockfd != -1) close(sockfd);
         gexit_free_all(&ptrs, &ptrs_len);
         exit(rc);
 

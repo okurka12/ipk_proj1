@@ -63,6 +63,12 @@ enum gexit_statement {
     /* unregisters both listener thread id and its lock */
     GE_UNSET_LISTNR,
 
+    /* set the pointer to the udp_confirmer data */
+    GE_SET_CNFMDP,
+
+    /* unset the pointer to the udp_cnfm data */
+    GE_UNSET_CNFMDP
+
 };
 
 /**
@@ -73,7 +79,8 @@ enum gexit_statement {
  * (address string, open sockets) can be freed upon termination with `C-c`
  *
  * Call this function with `statement` and a pointer `p` pointing to the
- * desired property you want to set (sockfd, confp, etc..)
+ * desired property you want to set (sockfd, confp, etc..) or, if the desired
+ * property is a pointer, `p` is the pointer itself
  *
  * @note
  * this function contains a few `log` statements from `utils.h` which may

@@ -408,7 +408,9 @@ int udp_shell(conf_t *conf) {
         }
     }
 
+    gexit(GE_SET_CNFMDP, &cnfm_data);
     udpsh_loop_endlessly(conf, &cnfm_data);
+    gexit(GE_UNSET_CNFMDP, NULL);
 
     mfree(cnfm_data.arr);
     mfree(line);

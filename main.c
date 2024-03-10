@@ -131,6 +131,7 @@ int main(int argc, char *argv[]) {
         .dname = NULL,
         .cnt = START_MSGID
     };
+    gexit(GE_SET_CONFP, &conf);
 
     if (not args_ok(argc, argv, &conf)) {
         log(ERROR, "bad arguments (or no memory?)");
@@ -158,6 +159,7 @@ int main(int argc, char *argv[]) {
 
     cleanup:
     log(DEBUG, "cleaning up");
+    gexit(GE_UNSET_CONFP, NULL);
     gexit(GE_FREE_RES, NULL);
     free(conf.addr);
     free(conf.dname);
