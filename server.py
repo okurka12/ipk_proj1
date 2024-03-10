@@ -187,7 +187,7 @@ def recv_loop(sock: socket.socket) -> None:
             reply[2] = response[2]
             reply_socket.sendto(reply, retaddr)
 
-            # send another message
+        if msg.type == "AUTH" or msg.type == "JOIN":
             reply_id = 23  # from 0 to 255
             auth_success: int = 1  # 1 - success, 0 - failure
             print(f"sending REPLY (id={reply_id}) for msg id={msg.id}")
