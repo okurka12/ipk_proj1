@@ -90,6 +90,12 @@
 /* absolute value */
 #define abs(x) (((x) >= 0) ? (x) : (-(x)))
 
+/* minimum */
+#define min(x, y) ( (x) < (y) ? (x) : (y) )
+
+/* maximum */
+#define min(x, y) ( (x) > (y) ? (x) : (y) )
+
 /* memory allocation fail message (print with `report_error()`)*/
 #define MEMFAIL_MSG "couldn't allocate memory"
 
