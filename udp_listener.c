@@ -97,7 +97,6 @@ int udp_listener(void *args) {
 
     /* loop */
     while (true) {
-    // log(DEBUG, "listener looping");  // hardcore debugging (todo: remove)
 
     /* return if main thread wants us to return */
     mtx_lock(mtx);
@@ -170,6 +169,7 @@ int udp_listener(void *args) {
         got_reply = true;
     }
     if(save_port and auth_msg_confirmed and got_reply) {
+        /* todo: document what happens when AUTH message is confirmed but no REPLY comes */
         break;
     }
 
