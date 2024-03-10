@@ -32,7 +32,8 @@ $(DNDEBUG) $(ASAN)
 LDFLAGS=$(ASAN) -lpthread
 
 MODULES = udpcl.o rwmsgid.o main.o argparse.o gexit.o mmal.o udp_render.o \
-udp_confirmer.o udp_listener.o sleep_ms.o udp_sender.o shell.o msg.o
+udp_confirmer.o udp_listener.o sleep_ms.o udp_sender.o shell.o msg.o \
+udp_print_msg.o
 
 ALL: $(RESULT_BINARY)
 
@@ -79,6 +80,9 @@ mmal.h sleep_ms.h udp_confirmer.h msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 msg.o: msg.c msg.h mmal.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+udp_print_msg.o: udp_print_msg.c  # todo: add dependencies
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 

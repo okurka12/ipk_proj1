@@ -57,8 +57,10 @@ void print_raw(char *msg, unsigned int len) {
     for (unsigned int i = 0; i < len; i++) {
         if (isprint(msg[i])) {
             putchar(msg[i]);
+        } else if (msg[i] == '\\') {
+            printf("\\\\");
         } else {
-            printf("\\x%02hhu", (unsigned char)msg[i]);
+            printf("\\x%02hhx", msg[i]);
         }
     }
     printf("\"\n");
@@ -120,16 +122,14 @@ int udp_listener(void *args) {
     }
     mtx_unlock(mtx);
 
-    /* recvfrom */
+    /* call recvfrom and start the loop again if it timed out*/
     int received_bytes = recvfrom(conf->sockfd, buf, RESPONSE_BUFSIZE, 0,
         (SSA *)&respaddr, &respaddr_len);
-
-
-    /* if recvfrom timed out */
     if (received_bytes == -1) {
         continue;
     }
 
+    /* for debugging purposes, print the raw contents of a message */
     print_raw(buf, received_bytes);
 
     /* extract the address and port */
@@ -166,7 +166,13 @@ int udp_listener(void *args) {
         }
     }
 
-    udp_print_msg(buf, received_bytes);
+    /* try to print the message or indicate a bad format */
+    rc = udp_print_msg(buf, received_bytes);
+    if (rc == ERR_INTERNAL) break;
+    if (rc == UPM_BADFMT) {
+        log(WARNING, "invalid format of incoming message");
+        /* todo: a flag for invalid format, so that main thread sends ERR */
+    }
 
     /* special case: save_port */
     if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
