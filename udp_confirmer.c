@@ -56,7 +56,10 @@ int udp_cnfm_reg(uint16_t id, udp_cnfm_data_t *data) {
         }
     }
 
-    /* no empty pos, expand the array (todo) */
+    /* no empty pos, expand the array? actually no i wont be doing this
+    because it's not necessary because sending messages from client is
+    synchronous in my implementation hence there won't be more than
+    1 unconfirmed message at a time */
     log(FATAL, "too much unconfirmed messages...");
     unlock_return(1);
 }
