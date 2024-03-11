@@ -18,9 +18,6 @@
 #ifndef _S_H_E_L_L_H_
 #define _S_H_E_L_L_H_
 
-/* shell FSM states, todo: remove? */
-enum sstate { SS_START, SS_AUTH, SS_OPEN, SS_ERROR, SS_END };
-
 /* returns string repr. of the shell FSM state, (char *) */
 #define sstate_str(iden) (\
 (iden) == SS_START ? "SS_START" : \

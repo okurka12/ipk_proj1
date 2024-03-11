@@ -90,57 +90,8 @@ int udp_main(conf_t *conf) {
 
     udp_shell(conf);
 
-
-
-    // /* hard coded message data */
-    // msg_t first_msg = { .type = MTYPE_AUTH, .id = 2, .username = "xpavli0a",
-    //     .dname = "vita", .secret = "a38c9ccc-9934-4603-afc8-33d9db47c66c" };
-    // msg_t msg2 = { .type = MTYPE_JOIN, .id = 3, .chid = "discord.general",
-    //     .dname = "vita" };
-    // msg_t last_msg = { .type = MTYPE_BYE, .id = 4 };
-    // (void)first_msg;
-    // (void)msg2;
-    // (void)last_msg;
-
-
-
-    // /* start listener again, but now for real */
-    // listener_args.save_port = false;
-    // rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
-    // if (rc != thrd_success) {
-    //     log(ERROR, "couldn't create listener thread");
-    //     return ERR_INTERNAL;
-    // }
-    // gexit(GE_SET_LISTHR, &listener_thread_id);
-    // gexit(GE_SET_LISMTX, &listener_mtx);
-
-    // /* sleep before sending msg2 */
-    // getchar();
-
-    /* now that listener is started and will be confirming messages,
-    we can send messages */
-    // rc = udp_sender_send(&msg2, conf, &cnfm_data);
-    // if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
-    // // sleep_ms(400);
-    // rc = udp_sender_send(&last_msg, conf, &cnfm_data);
-    // if (rc != 0) { log(ERROR, "couldn't send"); rc = 1; goto cleanup; }
-
-    // cleanup:
-
-    /* let listener finish */
-    // mtx_unlock(&listener_mtx);
-
-    // /* wait for it to finish */
-    // log(DEBUG, "waiting for listener thread");
-    // thrd_join(listener_thread_id, NULL);
-    // gexit(GE_UNSET_LISTNR, NULL);
-
-    /* cleanup */
-    // mtx_destroy(&listener_mtx);
-    // mfree(cnfm_data.arr);
     gexit(GE_UNSET_FD, NULL);
     close(conf->sockfd);
-
     log(INFO, "udp client done");
     return rc;
 }

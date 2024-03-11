@@ -12,8 +12,6 @@
 
 /**
  * implementation of the UDP Listener module - see udp_listener.h
- *
- * todo: implement correct printing of the messages
 */
 
 #include <assert.h>
