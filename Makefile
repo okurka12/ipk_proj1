@@ -50,7 +50,7 @@ udp_listener.h udp_sender.h sleep_ms.h mmal.h shell.h
 argparse.o: argparse.c argparse.h ipk24chat.h utils.h mmal.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-gexit.o: gexit.c ipk24chat.h gexit.h utils.h
+gexit.o: gexit.c ipk24chat.h gexit.h utils.h msg.h udp_sender.h udp_confirmer.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 mmal.o: mmal.c mmal.h gexit.h
@@ -61,7 +61,7 @@ msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_listener.o: udp_listener.c udp_listener.h ipk24chat.h udp_confirmer.h \
-utils.h mmal.h rwmsgid.h udp_sender.h
+utils.h mmal.h rwmsgid.h udp_sender.h udp_print_msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_confirmer.o: udp_confirmer.c ipk24chat.h udp_confirmer.h mmal.h utils.h
@@ -78,10 +78,10 @@ udp_sender.o: udp_sender.c udp_sender.h udp_render.h ipk24chat.h utils.h \
 mmal.h sleep_ms.h udp_confirmer.h msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-msg.o: msg.c msg.h mmal.h
+msg.o: msg.c msg.h mmal.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-udp_print_msg.o: udp_print_msg.c  # todo: add dependencies
+udp_print_msg.o: udp_print_msg.c ipk24chat.h udp_print_msg.h utils.h mmal.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 
