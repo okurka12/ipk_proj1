@@ -36,7 +36,7 @@ typedef struct {
 
     udp_cnfm_data_t *cnfm_data;
 
-    /* lock for `stop_flag` and `listener_done` */
+    /* lock for the various flags(`stop_flag`, `listener_done`, ...) */
     mtx_t *mtx;
 
     /* setting this flag means listener can stop looping and return */
@@ -44,6 +44,9 @@ typedef struct {
 
     /* listener sets this flag when its finished */
     bool *done_flag;
+
+    /* listener ended because server sent BYE */
+    bool *server_sent_bye;
 
     /* if this flag is true, waits for the CONFIRM and REPLY, saves
     source port of the response and returns (`mtx` is not unlocked in this

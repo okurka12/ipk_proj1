@@ -105,6 +105,7 @@ static int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data)
     mtx_t listener_mtx;
     bool listener_stop_flag = false;
     bool listener_done_flag = false;
+    bool listner_server_sent_bye = false;
     if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
         log(ERROR, "couldnt initialize lock");
         return ERR_INTERNAL;
@@ -116,7 +117,8 @@ static int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data)
         .save_port = true,
         .auth_msg_id = auth_msg->id,
         .stop_flag = &listener_stop_flag,
-        .done_flag = &listener_done_flag
+        .done_flag = &listener_done_flag,
+        .server_sent_bye = &listner_server_sent_bye
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
@@ -245,6 +247,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     mtx_t listener_mtx;
     bool listener_stop_flag = false;
     bool listener_done_flag = false;
+    bool listener_server_sent_bye = false;
     if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
         log(ERROR, "couldnt initialize lock");
         return ERR_INTERNAL;
@@ -255,7 +258,8 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         .mtx = &listener_mtx,
         .save_port = false,
         .stop_flag = &listener_stop_flag,
-        .done_flag = &listener_done_flag
+        .done_flag = &listener_done_flag,
+        .server_sent_bye = &listener_server_sent_bye
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
@@ -282,10 +286,13 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
         /* check whether listener is finished */
         mtx_lock(&listener_mtx);
-        if (listener_done_flag) break; // todo: check if server didnt send bye
+        if (listener_done_flag) {
+            should_send_bye = not listener_server_sent_bye;
+            break;
+        }
         mtx_unlock(&listener_mtx);
 
-        /* read one line */
+        /* read one line (strip trailing LF) */
         read_chars = mgetline(&line, &line_length, stdin);
         if (read_chars < 1) {
             log(INFO, "EOF reached, stopping...");
@@ -296,7 +303,10 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
         /* check again whether listener is finished */
         mtx_lock(&listener_mtx);
-        if (listener_done_flag) break;
+        if (listener_done_flag) {
+            should_send_bye = not listener_server_sent_bye;
+            break;
+        }
         mtx_unlock(&listener_mtx);
 
         /* /join, /rename, /help or send message*/
@@ -314,6 +324,11 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             if (strlen(line) > MAX_MSGCONT_LEN) {
                 fprintf(stderr, ERRPRE "message content too long" ERRSUF);
                 log(WARNING, "message too long, not sending");
+                continue;
+            }
+            if (strlen(line) == 0) {
+                fprintf(stderr, ERRPRE "cannot send empty message" ERRSUF);
+                log(WARNING, "message empty, not sending");
                 continue;
             }
             msg = msg_ctor();

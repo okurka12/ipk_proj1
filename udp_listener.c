@@ -72,7 +72,23 @@ void print_raw(char *msg, unsigned int len) {
 }
 
 
+/**
+ * listener has a lot of parameters so its good to check if the caller
+ * didn't forget to initialize all of them
+*/
+static inline void check_listener_args(listener_args_t *args) {
+    assert(args->conf != NULL);
+    assert(args->cnfm_data != NULL);
+    assert(args->mtx != NULL);
+    assert(args->done_flag != NULL);
+    assert(args->stop_flag != NULL);
+    assert(args->server_sent_bye != NULL);
+}
+
+
 int udp_listener(void *args) {
+
+    check_listener_args(args);
 
     /* extract the arguments from the `args` strcture */
     conf_t *conf =               ((listener_args_t *)args)->conf;
@@ -82,6 +98,7 @@ int udp_listener(void *args) {
     uint16_t auth_msgid =        ((listener_args_t *)args)->auth_msg_id;
     bool *stop_flag =            ((listener_args_t *)args)->stop_flag;
     bool *done_flag =            ((listener_args_t *)args)->done_flag;
+    bool *server_sent_bye =      ((listener_args_t *)args)->server_sent_bye;
 
     log(DEBUG, "listener starting");
 
@@ -193,6 +210,9 @@ int udp_listener(void *args) {
 
     /* case: server sent BYE */
     if (resp_mtype == MTYPE_BYE) {
+        mtx_lock(mtx);
+        *server_sent_bye = true;
+        mtx_unlock(mtx);
         break;
     }
 
@@ -206,16 +226,17 @@ int udp_listener(void *args) {
 
     }  // while true
 
+    /* get rid of data (all is extracted) */
+    mfree(buf); buf = NULL;
+    mfree(sa);
+
     /* set the flag so main thread knows listener is finished */
     mtx_lock(mtx);
     *done_flag = true;
     mtx_unlock(mtx);
 
-    /* get rid of data (all is extracted) */
-    mfree(buf); buf = NULL;
-    mfree(sa);
-
     log(DEBUG, "listener done...");
+
     return rc;
 
 }
