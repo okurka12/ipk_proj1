@@ -73,3 +73,13 @@ char *mstrdup(const char *s) {
     strcpy(output, s);
     return output;
 }
+
+ssize_t mgetline(char **lineptr, size_t *n, FILE *stream) {
+    void *original_ptr = *lineptr;
+    ssize_t rc = getline(lineptr, n, stream);
+    if (original_ptr != *lineptr) {
+        gexit(GE_UNREG_PTR, original_ptr);
+        gexit(GE_REGISTER_PTR, *lineptr);
+    }
+    return rc;
+}

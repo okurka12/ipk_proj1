@@ -92,7 +92,7 @@ bool startswith(char *s, char *prefix) {
  * @note success means the authentication went well, that is
  * the REPLY result field was 1
 */
-int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
+static int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     assert(auth_msg->username != NULL);
     assert(auth_msg->dname != NULL);
     assert(auth_msg->secret != NULL);
@@ -161,7 +161,7 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
  * `id` field set to 0 and is expected to be then edited by the caller
  * @note returned msg_t needs to be freed with `msg_dtor`
 */
-msg_t *parse_auth(char *line, bool *error_occured) {
+static msg_t *parse_auth(char *line, bool *error_occured) {
     int rc = 1;
     msg_t *output = NULL;
 
@@ -177,16 +177,29 @@ msg_t *parse_auth(char *line, bool *error_occured) {
     }
 
     /* parse line */
-    /* todo: limit the length of the fields according to assignment */
     rc = sscanf(line, "/auth " LLS " " LLS " " LLS,
         username, secret, dname);
     if (rc != 3) {
-        fprintf(stderr, "ERR: not a valid /auth command\n");
+        fprintf(stderr, ERRPRE "not a valid /auth command" ERRSUF);
         log(WARNING, "not a valid /auth command");
         mfree(username); mfree(secret); mfree(dname);
         *error_occured = false;
         return NULL;
     }
+
+    /* check length of the fields */
+    bool uname_too_long = strlen(username) > MAX_UNAME_LEN;
+    bool secret_too_long = strlen(secret) > MAX_SECRET_LEN;
+    bool dname_too_long = strlen(dname) > MAX_DNAME_LEN;
+    if (uname_too_long or secret_too_long or dname_too_long) {
+        fprintf(stderr, ERRPRE "one of the fields is too long" ERRSUF);
+        log(WARNING, "field too long");
+        mfree(username); mfree(secret); mfree(dname);
+        *error_occured = false;
+        return NULL;
+    }
+
+    /* all ok */
     logf(DEBUG, "got username=%s secret=%s dname=%s",
         username, secret, dname);
 
@@ -273,7 +286,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         mtx_unlock(&listener_mtx);
 
         /* read one line */
-        read_chars = getline(&line, &line_length, stdin);
+        read_chars = mgetline(&line, &line_length, stdin);
         if (read_chars < 1) {
             log(INFO, "EOF reached, stopping...");
             break;
@@ -288,7 +301,14 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             /* todo: implement parse_rename */
         } else if (is_help(line)) {
             /* todo: implement printing help */
+
+        /* else: inputted line is a message */
         } else {
+
+            /* check the message content length */
+            if (strlen(line) > MAX_MSGCONT_LEN) {
+                fprintf(stderr, ERRPRE "message content too long" ERRSUF);
+            }
             msg = msg_ctor();
             if (msg == NULL) {
                 log(ERROR, MEMFAIL_MSG);
@@ -366,7 +386,7 @@ int udp_shell(conf_t *conf) {
         log(DEBUG, "shell authentication looping");
 
         /* read one line (blocking) */
-        read_chars = getline(&line, &line_length, stdin);
+        read_chars = mgetline(&line, &line_length, stdin);
         if (read_chars < 1) return 0;  // eof
         rstriplf(line);
         logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);

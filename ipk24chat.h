@@ -53,6 +53,27 @@
 /* msgid for the last BYE message sent by client */
 #define LAST_MSGID 0xffff
 
+/* maximal length of field `Username` */
+#define MAX_UNAME_LEN 20
+
+/* maximal length of field `ChannelID` */
+#define MAX_CHID_LEN 20
+
+/* maximal length of field `Secret` */
+#define MAX_SECRET_LEN 128
+
+/* maximal length of field `DisplayName` */
+#define MAX_DNAME_LEN 20
+
+/* maximal length of field `MessageContent` */
+#define MAX_MSGCONT_LEN 1400
+
+/* prefix of an internall client error message */
+#define ERRPRE "ERR: "
+
+/* suffix of an internal client error message (includes LF) */
+#define ERRSUF "\n"
+
 #define STRSTR(x) #x
 #define STR(x) STRSTR(x)
 

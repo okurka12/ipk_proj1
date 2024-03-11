@@ -36,4 +36,7 @@ void mfree(void *ptr);
 /* like strdup, but also registers the pointer in the gexit module */
 char *mstrdup(const char *s);
 
+/* like getline, but registers the pointer */
+ssize_t mgetline(char **lineptr, size_t *n, FILE *stream);
+
 #endif  // ifndef _M_M_A_L_H_
