@@ -208,6 +208,10 @@ def recv_loop(sock: socket.socket) -> None:
             reply = bytearray(arr)
             reply_socket.sendto(reply, retaddr)
 
+        if msg.type == "MSG" and "bye" in msg.content:
+            reply = bytearray([MSG_INV_TYPES["BYE"], 255, 255])
+            reply_socket.sendto(reply, retaddr)
+
 
 
 def main():

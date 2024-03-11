@@ -282,7 +282,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
         /* check whether listener is finished */
         mtx_lock(&listener_mtx);
-        if (listener_done_flag) done = true;
+        if (listener_done_flag) break; // todo: check if server didnt send bye
         mtx_unlock(&listener_mtx);
 
         /* read one line */
@@ -293,6 +293,11 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         }
         rstriplf(line);
         logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
+
+        /* check again whether listener is finished */
+        mtx_lock(&listener_mtx);
+        if (listener_done_flag) break;
+        mtx_unlock(&listener_mtx);
 
         /* /join, /rename, /help or send message*/
         if (is_join(line)) {
@@ -308,6 +313,8 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             /* check the message content length */
             if (strlen(line) > MAX_MSGCONT_LEN) {
                 fprintf(stderr, ERRPRE "message content too long" ERRSUF);
+                log(WARNING, "message too long, not sending");
+                continue;
             }
             msg = msg_ctor();
             if (msg == NULL) {
@@ -352,10 +359,12 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     /* from now we will let the listener finish */
     /**************************************************************************/
 
-    /* let listener finish  */
-    mtx_lock(&listener_mtx);
-    listener_stop_flag = true;
-    mtx_unlock(&listener_mtx);
+    /* let listener finish if it wasnt finished */
+    if (not listener_done_flag) {
+        mtx_lock(&listener_mtx);
+        listener_stop_flag = true;
+        mtx_unlock(&listener_mtx);
+    }
 
     /* wait for the listener thread */
     log(DEBUG, "waiting for listener thread");
