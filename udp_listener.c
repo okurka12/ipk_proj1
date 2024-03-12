@@ -39,29 +39,29 @@
 #define AS_SIZE sizeof(struct sockaddr_in)
 
 /**
- * Prints `msg` TYPE + ID + the rest of the message in binary to stdout,
+ * Prints `msg` TYPE + ID + the rest of the message in binary to stderr,
  * but only if `NDEBUG` is NOT defined
 */
 void print_raw(char *msg, unsigned int len) {
     #ifndef NDEBUG
 
     if (len > 0) {
-        printf("\n%s ", mtype_str(msg[0]));
+        fprintf(stderr, "\n%s ", mtype_str(msg[0]));
     }
     if (len > 2) {
-        printf("id=%hu: ", read_msgid(msg + 1));
+        fprintf(stderr, "id=%hu: ", read_msgid(msg + 1));
     }
-    printf("b\"");
+    fprintf(stderr, "b\"");
     for (unsigned int i = 0; i < len; i++) {
         if (isprint(msg[i])) {
             putchar(msg[i]);
         } else if (msg[i] == '\\') {
-            printf("\\\\");
+            fprintf(stderr, "\\\\");
         } else {
-            printf("\\x%02hhx", msg[i]);
+            fprintf(stderr, "\\x%02hhx", msg[i]);
         }
     }
-    printf("\"\n");
+    fprintf(stderr, "\"\n");
 
     #else  // ifndef NDEBUG
 
@@ -210,6 +210,8 @@ int udp_listener(void *args) {
 
     /* case: server sent BYE */
     if (resp_mtype == MTYPE_BYE) {
+        /* todo: confirm all unconfirmed messages, so that the sender thread(s) stop spamming (listener got BYE so it wont be listening for confirms anymore) */
+        log(DEBUG, "listener received BYE, so it's stopping...");
         mtx_lock(mtx);
         *server_sent_bye = true;
         mtx_unlock(mtx);
