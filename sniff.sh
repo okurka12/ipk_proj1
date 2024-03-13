@@ -17,26 +17,26 @@ if [ "$1" = "" ]; then
     exit
 fi
 
-# overwrite file?
+# append to file?
 if [ -f "$FILE" ]; then
-    echo -n "overwrite '$FILE'? (y/n) "
-    read OVERWRITE
-    if [ $OVERWRITE != "y" ]; then
+    echo -n "append to '$FILE'? (y/n) "
+    read APPEND
+    if [ $APPEND != "y" ]; then
         exit
     fi
 fi
 
+# log date
+echo -n "todays date: "
+date
+echo "" >> $FILE
+date >> $FILE
 
 
-TCPD="sudo tcpdump -X -l ip and (udp or icmp)"
-TEELOG="tee $FILE"
+
+TCPD="sudo tcpdump -X -l -i any ip and (udp or icmp)"
+TEELOG="tee -a $FILE"
 GREPFILT="grep --color=auto $1 -A $NUM"
 
 echo "$TCPD | $TEELOG | $GREPFILT"
 $TCPD | $TEELOG | $GREPFILT
-
-
-# -X        ... header and data in hex + ascci
-# -l        ... line buffered
-# -i lo     ... interface `lo` (default interface is eth0)
-# ip and (udp or icmp) ... only ipv4 udp + icmp packets
