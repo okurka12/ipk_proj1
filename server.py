@@ -1,5 +1,9 @@
+##############
+# IPK stream #
+# 2024-03-08 #
+##############
 
-# dont submit this kekl
+# author: okurka12 (https://github.com/okurka12)
 
 # inspiration
 # https://wiki.python.org/moin/UdpCommunication
@@ -111,6 +115,7 @@ def str_from_bytes(startpos: int, b: bytes) -> str:
     """
     reads a null terminated string beginning at `startpos` in `b`.
     returns the string
+    o k u r k a 1 2
     """
     output = ""
     i = startpos
@@ -158,7 +163,7 @@ def recv_loop(sock: socket.socket) -> None:
         # print on stdout
         if msg.type != "CONFIRM":
             print("\nMessage came to port "
-                  + "dyn2" if came_to_dynamic_port else str(UDP_PORT))
+                  + ("dyn2" if came_to_dynamic_port else str(UDP_PORT)))
             print(f"MESSAGE from {retaddr[0]}:{retaddr[1]}:")
             print(msg)
 
@@ -166,15 +171,6 @@ def recv_loop(sock: socket.socket) -> None:
         # time.sleep(0.1)
 
         reply_socket = sock_dynport if REPLY_FROM_DYNAMIC_PORT else sock
-
-        # # send BYE (comment out for testing)
-        # if msg.type != "AUTH" and msg.type != "CONFIRM":
-        #     bye_id = 69  # from 0 to 255
-        #     auth_success: int = 1  # 1 - success, 0 - failure
-        #     print(f"sending BYE (id={bye_id})")
-        #     arr = [MSG_INV_TYPES["BYE"], 0, bye_id]
-        #     reply = bytearray(arr)
-        #     reply_socket.sendto(reply, retaddr)
 
         # send CONFIRM and REPLY
         if msg.type != "CONFIRM":
