@@ -8,3 +8,4 @@ auth.txt
 tcpdump*.log
 real_????.txt
 smazat.py
+run*.log
