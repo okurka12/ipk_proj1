@@ -36,7 +36,7 @@ date >> $FILE
 
 TCPD="sudo tcpdump -X -l -i any ip and (udp or icmp)"
 TEELOG="tee -a $FILE"
-GREPFILT="grep --color=auto $1 -A $NUM"
+GREPFILT="grep -F --color=auto $1 -A $NUM"
 
 echo "$TCPD | $TEELOG | $GREPFILT"
 $TCPD | $TEELOG | $GREPFILT
