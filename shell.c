@@ -45,6 +45,7 @@
 #include <assert.h>
 #include <stdio.h>  // stdin
 #include <string.h>  // strlen
+#include <ctype.h>  // isspace
 #include "mmal.h"  // mgetline
 #include "ipk24chat.h"  // conf_t
 #include "shell.h"
@@ -80,7 +81,7 @@ void rstriplf(char *s) {
 }
 
 /* returns if `s` starts with `prefix` */
-bool startswith(char *s, char *prefix) {
+bool startswith(const char *s, const char *prefix) {
     if (strlen(s) < strlen(prefix)) return false;
     return strncmp(s, prefix, strlen(prefix)) == 0;
 }
@@ -284,18 +285,29 @@ static char *parse_rename(char *line, bool *error_occurred) {
     return dname;
 }
 
+static inline bool is_auth(char *s) {
+    const char *prfx = "/auth";
+    unsigned int i = strlen(prfx);
+    return startswith(s, prfx) and isspace(s[i]);
+}
+
 static inline bool is_join(char *s) {
-    return startswith(s, "/join ");
+    const char *prfx = "/join";
+    unsigned int i = strlen(prfx);
+    return startswith(s, prfx) and isspace(s[i]);
 }
 
 static inline bool is_rename(char *s) {
-    return startswith(s, "/rename ");
+    const char *prfx = "/rename";
+    unsigned int i = strlen(prfx);
+    return startswith(s, prfx) and isspace(s[i]);
 }
 
 static inline bool is_help(char *s) {
-    return startswith(s, "/help");
+    const char *prfx = "/help";
+    unsigned int i = strlen(prfx);
+    return startswith(s, prfx) and (isspace(s[i]) or s[i] == '\0');
 }
-
 
 
 /**
@@ -382,7 +394,11 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         mtx_unlock(&listener_mtx);
 
         /* /join, /rename, /help or send message*/
-        if (is_join(line)) {
+        if (is_auth(line)) {
+            fprintf(stderr, ERRPRE "already authenticated" ERRSUF);
+            continue;
+
+        } else if (is_join(line)) {
 
             /* parse /join command */
             error_occurred = false;
