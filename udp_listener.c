@@ -54,7 +54,7 @@ void print_raw(char *msg, unsigned int len) {
     fprintf(stderr, "b\"");
     for (unsigned int i = 0; i < len; i++) {
         if (isprint(msg[i])) {
-            putchar(msg[i]);
+            fputc(msg[i], stderr);
         } else if (msg[i] == '\\') {
             fprintf(stderr, "\\\\");
         } else {
