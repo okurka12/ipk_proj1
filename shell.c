@@ -132,7 +132,7 @@ static int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data)
     /* send first AUTH message */
     rc = udp_sender_send(auth_msg, conf, cnfm_data);
     if (rc != 0) {
-        fprintf(stderr, "ERROR: authentication message wasn't confirmed\n");
+        fprintf(stderr, ERRPRE "AUTH message wasn't confirmed" ERRSUF);
         log(ERROR, "couldn't send");
 
         /* let listener finish (else it would wait for the REPLY) */
@@ -158,12 +158,12 @@ static int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data)
 
 /**
  * @brief Parses /auth command and returns corresponding msg_t
- * if the command is invalid, returns NULL if there is an internal error,
+ * if the command is invalid, returns NULL, if there is an internal error,
  * returns NULL and sets `error_occured` to true. Returned msg_t has
  * `id` field set to 0 and is expected to be then edited by the caller
  * @note returned msg_t needs to be freed with `msg_dtor`
 */
-static msg_t *parse_auth(char *line, bool *error_occured) {
+static msg_t *parse_auth(const char *line, bool *error_occured) {
     int rc = 1;
     msg_t *output = NULL;
 
@@ -172,7 +172,8 @@ static msg_t *parse_auth(char *line, bool *error_occured) {
     char *secret = mmal(MFL);
     char *dname = mmal(MFL);
     if (username == NULL or secret == NULL or dname == NULL) {
-        fprintf(stderr, "%s\n", MEMFAIL_MSG);
+        mfree(username); mfree(secret); mfree(dname);
+        fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
         log(ERROR, MEMFAIL_MSG);
         *error_occured = true;
         return NULL;
@@ -213,6 +214,42 @@ static msg_t *parse_auth(char *line, bool *error_occured) {
     output->username = username;
     output->secret = secret;
     output->dname = dname;
+    return output;
+}
+
+/**
+ * same as parse_auth, but for /join
+*/
+static msg_t *parse_join(const char *line, bool *error_occured) {
+
+    /* allocate chid buffer */
+    char *chid = mmal(MFL);
+    if (chid == NULL) {
+        fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
+        log(ERROR, MEMFAIL_MSG);
+        *error_occured = true;
+        return NULL;
+    }
+
+    /* scan chid */
+    int rc = sscanf(line, "/join " LLS, chid);
+    if (rc != 1 or strlen(chid) > MAX_CHID_LEN) {
+        mfree(chid);
+        return NULL;
+    }
+
+    /* allocate msg buffer */
+    msg_t *output = msg_ctor();
+    if (output == NULL) {
+        mfree(chid);
+        fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
+        log(ERROR, MEMFAIL_MSG);
+        *error_occured = true;
+        return NULL;
+    }
+
+    output->type = MTYPE_JOIN;
+    output->chid = chid;
     return output;
 }
 
@@ -281,6 +318,9 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
     bool should_send_bye = true;
 
+    /* for parse_. calls */
+    bool error_occurred = false;
+
     bool done = false;
     while (not done) {
 
@@ -311,7 +351,38 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
         /* /join, /rename, /help or send message*/
         if (is_join(line)) {
-            /* todo: implement parse_join */
+
+            /* parse /join command */
+            error_occurred = false;
+            msg = parse_join(line, &error_occurred);
+
+            /* /join command was invalid */
+            if (msg == NULL and not error_occurred) {
+                fprintf(stderr, ERRPRE "invalid /join command" ERRSUF);
+                continue;
+            }
+
+            /* internal error occured while parsing */
+            if (msg == NULL and error_occurred) {
+                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
+                continue;
+            }
+
+            /* fill additional parameters and send*/
+            msg->id = (conf->cnt);
+            msg->dname = conf->dname;
+            rc = udp_sender_send(msg, conf, cnfm_data);
+
+            /* destroy message */
+            msg->dname = NULL;  // so conf->dname isnt wiped by msg_dtor
+            msg_dtor(msg);
+
+            /* was sending successfull? */
+            if (rc != 0) {
+                fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
+                continue;
+            }
+
         } else if (is_rename(line)) {
             /* todo: implement parse_rename */
         } else if (is_help(line)) {
@@ -333,9 +404,9 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             }
             msg = msg_ctor();
             if (msg == NULL) {
+                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
                 log(ERROR, MEMFAIL_MSG);
-                rc = ERR_INTERNAL;
-                break;
+                continue;
             }
             msg->type = MTYPE_MSG;
 
@@ -346,16 +417,12 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             msg->content = mstrdup(line);
             if (msg->dname == NULL or msg->content == NULL) {
                 log(ERROR, MEMFAIL_MSG);
-                rc = ERR_INTERNAL;
-                break;
+                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
             }
 
             rc = udp_sender_send(msg, conf, cnfm_data);
             if (rc != 0) {
-                mtx_lock(&listener_mtx);
-                should_send_bye = not listener_done_flag;
-                mtx_unlock(&listener_mtx);
-                done = true;
+                fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
             }
 
             msg_dtor(msg);
@@ -394,8 +461,14 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
 
 int udp_shell(conf_t *conf) {
+
+    /* check if the ipk24chat.h constants are ok with this file's constants */
+    static_assert(MAX_UNAME_LEN < MFL, "buffer too small, increase its size");
+    static_assert(MAX_CHID_LEN < MFL, "buffer too small, increase its size");
+    static_assert(MAX_SECRET_LEN < MFL, "buffer too small, increase its size");
+    static_assert(MAX_DNAME_LEN < MFL, "buffer too small, increase its size");
+
     int rc = 0;
-    // enum sstate state = SS_START;
     ssize_t read_chars = 0;
     msg_t *msg = NULL;
     udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
@@ -439,8 +512,12 @@ int udp_shell(conf_t *conf) {
             rc = ERR_INTERNAL;
             break;
         }
-        assert(conf->dname == NULL);  // until this point conf->dname was NULL
-        conf->dname = dname;          // or at least it should have been
+
+        /* set or change the display name */
+        if (conf->dname != NULL) {
+            mfree(conf->dname);
+        }
+        conf->dname = dname;
 
         msg_dtor(msg);
         msg = NULL;
