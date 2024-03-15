@@ -275,7 +275,6 @@ static char *parse_rename(char *line, bool *error_occurred) {
         *error_occurred = true;
         return NULL;
     }
-    /* todo: non prinable charcters (not here) */
     int rc = sscanf(line, "/rename " LLS, dname);
     if (rc != 1 or strlen (dname) > MAX_DNAME_LEN or not str_isprint(dname)) {
         mfree(dname);
@@ -285,28 +284,22 @@ static char *parse_rename(char *line, bool *error_occurred) {
     return dname;
 }
 
-static inline bool is_auth(char *s) {
-    const char *prfx = "/auth";
-    unsigned int i = strlen(prfx);
-    return startswith(s, prfx) and isspace(s[i]);
-}
-
-static inline bool is_join(char *s) {
-    const char *prfx = "/join";
-    unsigned int i = strlen(prfx);
-    return startswith(s, prfx) and isspace(s[i]);
-}
-
-static inline bool is_rename(char *s) {
-    const char *prfx = "/rename";
-    unsigned int i = strlen(prfx);
-    return startswith(s, prfx) and isspace(s[i]);
-}
-
-static inline bool is_help(char *s) {
-    const char *prfx = "/help";
+static inline bool iscommand(const char *s, const char *prfx) {
     unsigned int i = strlen(prfx);
     return startswith(s, prfx) and (isspace(s[i]) or s[i] == '\0');
+}
+
+static inline bool is_auth(char *s) {
+    return iscommand(s, "/auth");
+}
+static inline bool is_join(char *s) {
+    return iscommand(s, "/join");
+}
+static inline bool is_rename(char *s) {
+    return iscommand(s, "/rename");
+}
+static inline bool is_help(char *s) {
+    return iscommand(s, "/help");
 }
 
 
@@ -472,6 +465,13 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             if (strlen(line) == 0) {
                 fprintf(stderr, ERRPRE "cannot send empty message" ERRSUF);
                 log(WARNING, "message empty, not sending");
+                continue;
+            }
+
+            /* don't send non-printable characters */
+            if (not str_isprint(line)) {
+                fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
+                log(WARNING, "bad characters, not sending");
                 continue;
             }
 

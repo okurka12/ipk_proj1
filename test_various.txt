@@ -1,0 +1,23 @@
+/auth a b c
+eyo
+/auth x y z
+wassup
+/rename kvitek
+yo
+/rename aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+kkkkkk
+/join abc
+jfiernhgtbir
+/join aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+kdaofisgodnb
+pepik
+ěščřžýáíé
+abcd
+/auth
+/join
+/rename
+/help
+/helpp
+/authh
+/joinn
+/renamee
