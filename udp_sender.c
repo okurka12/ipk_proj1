@@ -108,8 +108,8 @@ int udp_sender_send(const msg_t *msg, const conf_t *conf,
         conf->retries);
         return 1;
     } else {
-        logf(DEBUG, "udp_sender ended successfully (msg id %hu, confirmed "
-            "on the %u. attempt)", msg->id, i + 1);
+        logf(DEBUG, "sent successfully (msg id %hu, confirmed on the "
+            "%u. attempt)", msg->id, i + 1);
         return 0;
     }
 }
