@@ -190,19 +190,23 @@ int udp_listener(void *args) {
     }
 
     /* special case: save_port */
-    if (save_port and resp_mtype == MTYPE_CONFIRM and resp_id == auth_msgid) {
-        logf(DEBUG, "AUTH msg id=%hu, was confirmed from port %hu, "
+    if (save_port and resp_mtype == MTYPE_REPLY) {
+
+        /* check the ref_msgid */
+        if (received_bytes < 7 or read_msgid(buf + 4) != auth_msgid) {
+            log(DEBUG, "got REPLY but its not valid or it has a different "
+                "ref_msgid");
+            continue;
+        }
+
+        logf(DEBUG, "REPLY to AUTH msg id=%hu, came from port %hu, "
             "changing conf->port", auth_msgid, respaddr_port);
         conf->port = respaddr_port;
         auth_msg_confirmed = true;
-    }
-    if (save_port and resp_mtype == MTYPE_REPLY) {
-        /* todo: check ref_msgid of the reply */
-        assert(received_bytes >= 7);
-        logf(DEBUG, "got REPLY with ref_msgid=%hu", read_msgid(buf + 4));
-        rc = buf[3] == 1 ? 0 : 1;  // success/failure
+        rc = buf[3] == 1 ? 0 : 1;  // REPLY success/failure
         got_reply = true;
     }
+    
     if(save_port and auth_msg_confirmed and got_reply) {
         /* todo: document what happens when AUTH message is confirmed but no REPLY comes */
         break;
