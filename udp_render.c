@@ -10,6 +10,7 @@
 **  2024-02-25  **
 *****************/
 
+#include <assert.h>
 #include <string.h>
 
 #include "udp_render.h"
@@ -39,6 +40,9 @@ char *udp_render_message(const msg_t *msg, unsigned int *length) {
     switch (msg->type) {
 
     case MTYPE_MSG: case MTYPE_ERR:
+        assert(msg->dname != NULL);
+        assert(msg->content != NULL);
+
         *length = 1 + 2 + strlen(msg->dname) + 1 +strlen(msg->content) + 1;
         allocate(output, *length);
         output[0] = msg->type;
@@ -55,7 +59,11 @@ char *udp_render_message(const msg_t *msg, unsigned int *length) {
         write_msgid(output + 1, msg->ref_msgid);
         break;
 
+    /* client won't be sending REPLY, but here it is anyways */
     case MTYPE_REPLY:
+        log(WARNING, "client sending reply? :hmm:");
+        assert(msg->content != NULL);
+
         *length = 1 + 2 + 1 + 2 + strlen(msg->content) + 1;
         allocate(output, *length);
         output[0] = msg->type;
@@ -66,6 +74,10 @@ char *udp_render_message(const msg_t *msg, unsigned int *length) {
         break;
 
     case MTYPE_AUTH:
+        assert(msg->username != NULL);
+        assert(msg->secret != NULL);
+        assert(msg->dname != NULL);
+
         *length = 1 + 2 + strlen(msg->username) + 1 + strlen(msg->dname) + 1 +
             strlen(msg->secret) + 1;
         allocate(output, *length);
@@ -78,6 +90,9 @@ char *udp_render_message(const msg_t *msg, unsigned int *length) {
         break;
 
     case MTYPE_JOIN:
+        assert(msg->chid != NULL);
+        assert(msg->dname !=  NULL);
+        
         *length = 1 + 2 + strlen(msg->chid) + 1 + strlen(msg->dname) + 1;
         allocate(output, *length);
         output[0] = msg->type;
