@@ -451,11 +451,15 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
                 log(WARNING, "message too long, not sending");
                 continue;
             }
+
+            /* don't send empty message */
             if (strlen(line) == 0) {
                 fprintf(stderr, ERRPRE "cannot send empty message" ERRSUF);
                 log(WARNING, "message empty, not sending");
                 continue;
             }
+
+            /* create message struct */
             msg = msg_ctor();
             if (msg == NULL) {
                 fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
@@ -463,26 +467,24 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
                 continue;
             }
             msg->type = MTYPE_MSG;
-
             msg->id = conf->cnt;
             conf->cnt += 1;
+            msg->dname = conf->dname;
+            msg->content = line;
 
-            msg->dname = mstrdup(conf->dname);
-            msg->content = mstrdup(line);
-            if (msg->dname == NULL or msg->content == NULL) {
-                log(ERROR, MEMFAIL_MSG);
-                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
-            }
-
+            /* send */
             rc = udp_sender_send(msg, conf, cnfm_data);
             if (rc != 0) {
                 fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
             }
 
+            /* destroy message struct */
+            msg->dname = NULL;    // keep conf->dname for further use
+            msg->content = NULL;  // keep the buffer allocated
             msg_dtor(msg);
             msg = NULL;
-        }
 
+        }  // line is a message
 
     }  // while not done
 
