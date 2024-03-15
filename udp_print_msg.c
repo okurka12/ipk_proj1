@@ -30,7 +30,7 @@ static const unsigned int upm_bufsize = 70000;
  * @return `false` if `s` contains unprintable characters else `true`
  * @note uses `ctype.h`'s `isprint`
 */
-static bool str_isprint(char *s) {
+bool str_isprint(const char *s) {
     for (unsigned int i = 0; s[i] != '\0'; i++) {
         if (not isprint(s[i])) {
             return false;

@@ -31,4 +31,11 @@
 */
 int udp_print_msg(char *msg, unsigned int msglen);
 
+/**
+ * checks if a string contains only printable characters
+ * @return `false` if `s` contains unprintable characters else `true`
+ * @note uses `ctype.h`'s `isprint`
+*/
+bool str_isprint(const char *s);
+
 #endif  // ifndef _U_D_P_P_R_I_N_T_M_S_G_H_

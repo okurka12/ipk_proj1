@@ -26,7 +26,7 @@ RESULT_BINARY=ipk24chat-client
 # CC=/usr/bin/gcc-10
 CC=gcc
 
-CFLAGS=-Wall -Wextra -pedantic -g -std=c11 $(LOGLEVEL) $(DNDEBUG) $(ASAN)
+CFLAGS=-Wall -Wextra -pedantic -g -std=c11 -Og $(LOGLEVEL) $(DNDEBUG) $(ASAN)
 
 LDFLAGS=$(ASAN) -lpthread
 
@@ -71,7 +71,7 @@ sleep_ms.o: sleep_ms.c utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 shell.o: shell.c mmal.h ipk24chat.h shell.h utils.h msg.h gexit.h \
-udp_listener.h udp_confirmer.h udp_sender.h
+udp_listener.h udp_confirmer.h udp_sender.h udp_print_msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_sender.o: udp_sender.c udp_sender.h udp_render.h ipk24chat.h utils.h \

@@ -54,6 +54,7 @@
 #include "udp_listener.h"  // LISTENER_TIMEOUT
 #include "udp_confirmer.h"  // cnfm_data_t
 #include "udp_sender.h"
+#include "udp_print_msg.h"  // str_isprint
 
 /* initial buffer for the line (if needed, getline reallocs, so this doesnt
 matter all that much) */
@@ -202,6 +203,18 @@ static msg_t *parse_auth(const char *line, bool *error_occured) {
         return NULL;
     }
 
+    /* check printability of the stuff */
+    bool uname_printable = str_isprint(username);
+    bool secret_printable = str_isprint(secret);
+    bool dname_printable = str_isprint(dname);
+    if (not uname_printable or not secret_printable or not dname_printable) {
+        fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
+        log(WARNING, "non printable characters");
+        mfree(username); mfree(secret); mfree(dname);
+        *error_occured = false;
+        return NULL;
+    }
+
     /* all ok */
     logf(DEBUG, "got username=%s secret=%s dname=%s",
         username, secret, dname);
@@ -233,8 +246,9 @@ static msg_t *parse_join(const char *line, bool *error_occured) {
 
     /* scan chid */
     int rc = sscanf(line, "/join " LLS, chid);
-    if (rc != 1 or strlen(chid) > MAX_CHID_LEN) {
+    if (rc != 1 or strlen(chid) > MAX_CHID_LEN or not str_isprint(chid)) {
         mfree(chid);
+        *error_occured = false;
         return NULL;
     }
 
@@ -251,6 +265,23 @@ static msg_t *parse_join(const char *line, bool *error_occured) {
     output->type = MTYPE_JOIN;
     output->chid = chid;
     return output;
+}
+
+static char *parse_rename(char *line, bool *error_occurred) {
+    char *dname = mmal(MFL);
+    if (dname == NULL) {
+        log(ERROR, MEMFAIL_MSG);
+        *error_occurred = true;
+        return NULL;
+    }
+    /* todo: non prinable charcters (not here) */
+    int rc = sscanf(line, "/rename " LLS, dname);
+    if (rc != 1 or strlen (dname) > MAX_DNAME_LEN or not str_isprint(dname)) {
+        mfree(dname);
+        *error_occurred = false;
+        return NULL;
+    }
+    return dname;
 }
 
 static inline bool is_join(char *s) {
@@ -320,6 +351,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
 
     /* for parse_. calls */
     bool error_occurred = false;
+    char *dname = NULL;
 
     bool done = false;
     while (not done) {
@@ -384,7 +416,29 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             }
 
         } else if (is_rename(line)) {
-            /* todo: implement parse_rename */
+
+            /* parse /rename command */
+            error_occurred = false;
+            dname = parse_rename(line, &error_occurred);
+
+            /* couldnt allocate buffer */
+            if (dname == NULL and error_occurred) {
+                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
+                log(ERROR, MEMFAIL_MSG);
+                continue;
+            }
+
+            /* invalid display name */
+            if (dname == NULL and not error_occurred) {
+                fprintf(stderr, ERRPRE "invalid /rename command" ERRSUF);
+                log(ERROR, "invalid /rename command");
+                continue;
+            }
+
+            /* replace conf->dname */
+            mfree(conf->dname);
+            conf->dname = dname;
+
         } else if (is_help(line)) {
             /* todo: implement printing help */
 
