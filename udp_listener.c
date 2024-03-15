@@ -83,6 +83,9 @@ static inline void check_listener_args(listener_args_t *args) {
     assert(args->done_flag != NULL);
     assert(args->stop_flag != NULL);
     assert(args->server_sent_bye != NULL);
+
+    /* suppress warning if NDEBUG is defined */
+    (void)args;
 }
 
 
@@ -206,7 +209,7 @@ int udp_listener(void *args) {
         rc = buf[3] == 1 ? 0 : 1;  // REPLY success/failure
         got_reply = true;
     }
-    
+
     if(save_port and auth_msg_confirmed and got_reply) {
         /* todo: document what happens when AUTH message is confirmed but no REPLY comes */
         break;
