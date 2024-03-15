@@ -35,6 +35,10 @@ msg_t *msg_ctor(void) {
 
 
 void msg_dtor(msg_t *p) {
+    if (p == NULL) {
+        log(WARNING, "called with null pointer");
+        return;
+    }
     if (p->secret != NULL) mfree(p->secret);
     if (p->username != NULL) mfree(p->username);
     if (p->chid != NULL) mfree(p->chid);
