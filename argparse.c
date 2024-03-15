@@ -116,6 +116,10 @@ bool args_ok(int argc, char *argv[], conf_t *conf) {
             conf->timeout);
     }
 
+    if (h_specified) {
+        return true;
+    }
+
     if (not t_specified or not s_specified) {
         log(ERROR, "server or transport protocol not specified");
         return false;
