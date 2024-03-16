@@ -421,7 +421,6 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             /* was sending successfull? */
             if (rc != 0) {
                 fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
-                continue;
             }
 
         } else if (is_rename(line)) {
@@ -449,7 +448,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             conf->dname = dname;
 
         } else if (is_help(line)) {
-            /* todo: implement printing help */
+            printf(CMD_HELP_TXT);
 
         /* else: inputted line is a message */
         } else {
@@ -559,6 +558,11 @@ int udp_shell(conf_t *conf) {
         if (read_chars < 1) return 0;  // eof
         rstriplf(line);
         logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
+
+        if (is_help(line)) {
+            printf(CMD_HELP_TXT);
+            continue;
+        }
 
         /* process the line */
         msg = parse_auth(line, &error_occured);

@@ -51,6 +51,8 @@ static bool str_isprint_nosp(char *s) {
     return true;
 }
 
+/* todo TODO: a function that has a static variable and returns a pointer to the buffer or frees it, ez, no 20000 allocs */
+
 
 static int print_reply(char *msg, unsigned int msglen) {
 

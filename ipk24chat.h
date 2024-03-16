@@ -74,21 +74,39 @@
 /* suffix of an internal client error message (includes LF) */
 #define ERRSUF "\n"
 
+/* for STR() */
 #define STRSTR(x) #x
+
+/* stringize the expanded macro (for example if we have `#define x 5` then
+`STR(x)` will be `"5"`) */
 #define STR(x) STRSTR(x)
 
 #define USAGE "Usage: ipk24chat-client -t tcp|udp -s ADDRESS [-p PORT] " \
 "[-d TIMEOUT] [-r RETRIES] [-h]"
 
 #define HELP_TXT "Options:" LF \
-"    -t           Transport protocol used" LF \
-"    -s           Server IP or hostname" LF \
-"    -p           Port (default is " STR(DEFAULT_PORT) ")" LF \
-"    -d           UDP confirmation timeout (ns) (default is " \
-                  STR(DEFAULT_TO) ")" LF \
-"    -r           Maximum number of UDP retransmissions (default is " \
-                  STR(DEFAULT_RETRIES) ")" LF \
-"    -h           Print help and exit"
+"  -t    Transport protocol used" LF \
+"  -s    Server IP or hostname" LF \
+"  -p    Port (default is " STR(DEFAULT_PORT) ")" LF \
+"  -d    UDP confirmation timeout (ns) (default is " \
+         STR(DEFAULT_TO) ")" LF \
+"  -r    Maximum number of UDP retransmissions (default is " \
+         STR(DEFAULT_RETRIES) ")" LF \
+"  -h    Print help and exit"
+
+#define CMD_HELP_TXT "Available commands:" LF \
+"  /auth username secret displayname -- authenticate if not authenticated " \
+"yet" LF \
+"  /join channel_id -- join a new channel" LF \
+"  /rename displayname -- change the display name for future messages" LF \
+"Parameter length restrictions:" LF \
+"  username:    " STR(MAX_UNAME_LEN) " characters" LF \
+"  secret:      " STR(MAX_SECRET_LEN) " characters" LF \
+"  displayname: " STR(MAX_DNAME_LEN) " characters" LF \
+"  channel_id:  " STR(MAX_CHID_LEN) " characters" LF \
+"Other inputs that don't represent any known command will be " LF \
+"interpreted as a message and a message can be no longer than " \
+STR(MAX_MSGCONT_LEN) " characters" LF
 
 
 /* global client lock (for accessing `conf`, `cnfm_data`, or `gexit`) */

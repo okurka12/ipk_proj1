@@ -141,8 +141,8 @@ int main(int argc, char *argv[]) {
     if (conf.should_print_help) {
         printf(USAGE LF);
         printf(HELP_TXT LF);
-        free(conf.addr);
-        return 0;
+        rc = 0;
+        goto cleanup;
     }
 
     if (resolve_hostname(&conf) != 0) {
