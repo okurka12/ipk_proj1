@@ -23,7 +23,7 @@
 #include "mmal.h"
 
 /* a buffer size for processing individual message fields */
-static const unsigned int upm_bufsize = 70000;
+static const unsigned int upm_bufsize = 65600;
 
 /**
  * checks if a string contains only printable characters
@@ -53,6 +53,48 @@ static bool str_isprint_nosp(char *s) {
 
 /* todo TODO: a function that has a static variable and returns a pointer to the buffer or frees it, ez, no 20000 allocs */
 
+/**
+ * if `freebuffer` is false, returns a pointer to a zeroed static buffer
+ * of size `upm_bufsize` if it is true, frees the buffer and returns null
+ *
+ * it supports having two buffers at a time, numbered 0 and 1, chosen by
+ * `bufid`, if `bufid` is out of bounds, returns null
+*/
+static char *upm_get_buffer(bool freebuffer, uint8_t bufid) {
+
+    static char *bufs[] = { NULL, NULL };
+
+    if (freebuffer) {
+        mfree(bufs[0]);
+        mfree(bufs[1]);
+        bufs[0] = NULL;
+        bufs[1] = NULL;
+        return NULL;
+    }
+
+    if (bufid > 1) {
+        log(WARNING, "invalid argumend `bufid`");
+        return NULL;
+    }
+
+    /* zero the buffer and reurn it (allocate it) */
+    if (bufs[bufid] != NULL) {
+        memset(bufs[bufid], 0, upm_bufsize);
+        return bufs[bufid];
+    } else {
+        bufs[bufid] = mmal(upm_bufsize);
+        if (bufs[bufid] == NULL) {
+            return NULL;
+        }
+        memset(bufs[bufid], 0, upm_bufsize);
+        return bufs[bufid];
+    }
+}
+
+void udp_free_printer_resources() {
+    upm_get_buffer(true, 0);
+}
+
 
 static int print_reply(char *msg, unsigned int msglen) {
 
@@ -68,7 +110,7 @@ static int print_reply(char *msg, unsigned int msglen) {
     if (reply_res > 1) return UPM_BADFMT;
 
     /* allocate zeroed buffer */
-    char *buf = mcal(upm_bufsize, 1);
+    char *buf = upm_get_buffer(false, 0);
     if (buf == NULL) { log(ERROR, MEMFAIL_MSG); return ERR_INTERNAL; }
 
     /* 6 is the start of the messagecontents field */
@@ -78,13 +120,11 @@ static int print_reply(char *msg, unsigned int msglen) {
 
     /* check for non-printable characters */
     if (not str_isprint(buf)) {
-        mfree(buf);
         return UPM_BADFMT;
     }
 
     fprintf(stderr, "%s: %s\n", reply_res ? "Success" : "Failure", buf);
 
-    mfree(buf);
     return 0;
 }
 
@@ -98,14 +138,13 @@ static int print_msg_err(char *msg, unsigned int msglen) {
     }
 
     /* allocate buffers */
-    char *dname = mcal(upm_bufsize, 1);
+    char *dname = upm_get_buffer(false, 0);
     if (dname == NULL) {
         log(ERROR, MEMFAIL_MSG);
         return ERR_INTERNAL;
     }
-    char *content = mcal(upm_bufsize, 1);
+    char *content = upm_get_buffer(false, 1);
     if (content == NULL) {
-        mfree(dname);
         log(ERROR, MEMFAIL_MSG);
         return ERR_INTERNAL;
     }
@@ -114,8 +153,6 @@ static int print_msg_err(char *msg, unsigned int msglen) {
     strncpy(dname, msg + 3, msglen - 3);
     unsigned int content_pos = 3 + strlen(dname) + 1;
     if (content_pos > msglen) {
-        mfree(dname);
-        mfree(content);
         return UPM_BADFMT;
     }
     strncpy(content, msg + content_pos, msglen - content_pos);
@@ -126,8 +163,6 @@ static int print_msg_err(char *msg, unsigned int msglen) {
     dname_ok = str_isprint_nosp(dname);
     content_ok = str_isprint(content);
     if (not dname_ok or not content_ok) {
-        mfree(dname);
-        mfree(content);
         return UPM_BADFMT;
     }
 
@@ -138,8 +173,6 @@ static int print_msg_err(char *msg, unsigned int msglen) {
         fprintf(stderr, "ERR FROM %s: %s", dname, content);
     }
 
-    mfree(dname);
-    mfree(content);
     return 0;
 }
 

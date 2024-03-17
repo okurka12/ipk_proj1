@@ -40,7 +40,8 @@
 #include "sleep_ms.h"
 #include "shell.h"
 #include "mmal.h"
-#include "udp_marker.h"
+#include "udp_marker.h"  // udpm_free_res
+#include "udp_print_msg.h"  // udp_free_printer_resources
 
 mtx_t gcl;
 
@@ -161,6 +162,7 @@ int main(int argc, char *argv[]) {
     cleanup:
     log(DEBUG, "cleaning up");
     udpm_free_res();
+    udp_free_printer_resources();
     gexit(GE_UNSET_CONFP, NULL);
     gexit(GE_FREE_RES, NULL);
     free(conf.addr);
