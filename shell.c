@@ -46,6 +46,9 @@
 #include <stdio.h>  // stdin
 #include <string.h>  // strlen
 #include <ctype.h>  // isspace
+#include <unistd.h>  // isatty, close
+#include <sys/epoll.h>
+
 #include "mmal.h"  // mgetline
 #include "ipk24chat.h"  // conf_t
 #include "shell.h"
@@ -358,16 +361,52 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     bool error_occurred = false;
     char *dname = NULL;
 
+    /* epoll boilerplate, but if stdin is a file all this is skipped */
+    /* epoll bp */ int epoll_fd = -1;
+    /* epoll bp */ if (isatty(0)) {
+    /* epoll bp */
+    /* epoll bp */ epoll_fd = epoll_create1(0);
+    /* epoll bp */ if (epoll_fd == -1) {
+    /* epoll bp */     log(FATAL, "couldn't create epoll instance");
+    /* epoll bp */     fprintf(stderr, ERRPRE "couldn't create epoll instance"
+    /* epoll bp */         ERRSUF);
+    /* epoll bp */     perror(ERRPRE "epoll_create1");
+    /* epoll bp */     return ERR_INTERNAL;
+    /* epoll bp */ }
+    /* epoll bp */ gexit(GE_SET_EPOLLFD, &epoll_fd);
+    /* epoll bp */ struct epoll_event stdin_event = {
+    /* epoll bp */     .data.fd = 0,
+    /* epoll bp */     .events = EPOLLIN
+    /* epoll bp */ };
+    /* epoll bp */ rc = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, 0, &stdin_event);
+    /* epoll bp */ if (rc != 0) {
+    /* epoll bp */     log(FATAL, "couldn't add epoll event");
+    /* epoll bp */     fprintf(stderr, ERRPRE "couldn't add epoll event"
+    /* epoll bp */         ERRSUF);
+    /* epoll bp */     perror(ERRPRE "epoll_ctl");
+    /* epoll bp */     return ERR_INTERNAL;
+    /* epoll bp */ }
+    /* epoll bp */ }  // if isatty
+    /* epoll bp */ struct epoll_event events[1];
+
     bool done = false;
     while (not done) {
 
-        /* check whether listener is finished */
-        mtx_lock(&listener_mtx);
-        if (listener_done_flag) {
-            should_send_bye = not listener_server_sent_bye;
-            break;
+        /* while blocking for stdin, ocassionally check if listener hasnt
+        finished yet (if stdin is a file, this is never performed) */
+        bool should_wait = true;
+        while (epoll_fd != -1 and should_wait) {
+            int epr = epoll_wait(epoll_fd, events, 1, 100 *SH_STDIN_TIMEOUT_MS);
+            if (epr == 1) {
+                should_wait = false;
+            }
+            mtx_lock(&listener_mtx);
+            if (listener_done_flag) {
+                should_send_bye = not listener_server_sent_bye;
+                goto after_outer_loop;  // double break
+            }
+            mtx_unlock(&listener_mtx);
         }
-        mtx_unlock(&listener_mtx);
 
         /* read one line (strip trailing LF) */
         read_chars = mgetline(&line, &line_length, stdin);
@@ -499,9 +538,19 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             msg_dtor(msg);
             msg = NULL;
 
+            /* check if listener is finished */
+            mtx_lock(&listener_mtx);
+            if (listener_done_flag) {
+                should_send_bye = not listener_server_sent_bye;
+                break;
+            }
+            mtx_unlock(&listener_mtx);
+
         }  // line is a message
 
     }  // while not done
+
+    after_outer_loop:
 
     if (should_send_bye) {
         msg_t bye = { .type = MTYPE_BYE, .id = LAST_MSGID };
@@ -526,6 +575,10 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     gexit(GE_UNSET_LISTNR, NULL);
     mtx_destroy(&listener_mtx);
     logf(INFO, "listener finished with return code %d", lrc);
+
+    close(epoll_fd);
+    gexit(GE_UNSET_EPOLLFD, NULL);
+
     return rc;
 }
 

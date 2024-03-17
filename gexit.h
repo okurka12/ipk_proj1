@@ -67,7 +67,13 @@ enum gexit_statement {
     GE_SET_CNFMDP,
 
     /* unset the pointer to the udp_cnfm data */
-    GE_UNSET_CNFMDP
+    GE_UNSET_CNFMDP,
+
+    /* set epoll instance file descriptor */
+    GE_SET_EPOLLFD,
+
+    /* unset epoll instance file descriptor */
+    GE_UNSET_EPOLLFD
 
 };
 

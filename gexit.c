@@ -129,6 +129,7 @@ void gexit_free_all(void ***ptrs, unsigned int *len) {
 
 void gexit(enum gexit_statement statement, void *p) {
     static int sockfd = -1;
+    static int epollfd = -1;
     static conf_t *confp = NULL;
     static udp_cnfm_data_t *cnfmdp = NULL;
 
@@ -196,6 +197,14 @@ void gexit(enum gexit_statement statement, void *p) {
         cnfmdp = NULL;
         break;
 
+    case GE_SET_EPOLLFD:
+        epollfd = *((int *)p);
+        break;
+
+    case GE_UNSET_EPOLLFD:
+        epollfd = -1;
+        break;
+
     case GE_TERMINATE:
         log(INFO, "the program was interrupted, exiting");
         int rc = 0;
@@ -220,6 +229,7 @@ void gexit(enum gexit_statement statement, void *p) {
         }
 
         if (sockfd != -1) close(sockfd);
+        if (epollfd != -1) close(epollfd);
         gexit_free_all(&ptrs, &ptrs_len);
         exit(rc);
 
