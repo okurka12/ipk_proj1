@@ -22,14 +22,6 @@
 miliseconds */
 #define SH_STDIN_TIMEOUT_MS 10  // todo: document this constant
 
-/* returns string repr. of the shell FSM state, (char *) */
-#define sstate_str(iden) (\
-(iden) == SS_START ? "SS_START" : \
-(iden) == SS_AUTH ? "SS_AUTH" : \
-(iden) == SS_OPEN ? "SS_OPEN" : \
-(iden) == SS_ERROR ? "SS_ERROR" : \
-(iden) == SS_END ? "SS_END" : "unknown")
-
 /**
  * Starts a "shell". The shell starts a listener, sends messages. Returns
  * when reaching the end of user input or upon receiving BYE.
