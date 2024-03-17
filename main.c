@@ -40,6 +40,7 @@
 #include "sleep_ms.h"
 #include "shell.h"
 #include "mmal.h"
+#include "udp_marker.h"
 
 mtx_t gcl;
 
@@ -159,6 +160,7 @@ int main(int argc, char *argv[]) {
 
     cleanup:
     log(DEBUG, "cleaning up");
+    udpm_free_res();
     gexit(GE_UNSET_CONFP, NULL);
     gexit(GE_FREE_RES, NULL);
     free(conf.addr);

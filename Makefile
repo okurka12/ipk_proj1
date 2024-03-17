@@ -32,7 +32,7 @@ LDFLAGS=$(ASAN) -lpthread
 
 MODULES = udpcl.o rwmsgid.o main.o argparse.o gexit.o mmal.o udp_render.o \
 udp_confirmer.o udp_listener.o sleep_ms.o udp_sender.o shell.o msg.o \
-udp_print_msg.o
+udp_print_msg.o udp_marker.o
 
 ALL: $(RESULT_BINARY)
 
@@ -61,7 +61,7 @@ msg.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_listener.o: udp_listener.c udp_listener.h ipk24chat.h udp_confirmer.h \
-utils.h mmal.h rwmsgid.h udp_sender.h udp_print_msg.h
+utils.h mmal.h rwmsgid.h udp_sender.h udp_print_msg.h udp_marker.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_confirmer.o: udp_confirmer.c ipk24chat.h udp_confirmer.h mmal.h utils.h
@@ -82,6 +82,9 @@ msg.o: msg.c msg.h mmal.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 udp_print_msg.o: udp_print_msg.c ipk24chat.h udp_print_msg.h utils.h mmal.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+udp_marker.o: udp_marker.c mmal.h udp_marker.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 

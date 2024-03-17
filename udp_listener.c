@@ -30,6 +30,7 @@
 #include "rwmsgid.h"
 #include "udp_sender.h"
 #include "udp_print_msg.h"
+#include "udp_marker.h"
 
 
 /* addres struct for sendto */
@@ -184,6 +185,14 @@ int udp_listener(void *args) {
         }
     }
 
+    /* continue if we've already got this message */
+    if (udpm_was_seen(resp_id)) {
+        continue;
+    } else {
+        rc = udpm_mark(resp_id);
+        if (rc != 0) break;  // on error
+    }
+
     /* try to print the message or indicate a bad format */
     rc = udp_print_msg(buf, received_bytes);
     if (rc == ERR_INTERNAL) break;
@@ -230,8 +239,6 @@ int udp_listener(void *args) {
         /* todo: send bye when received ERR */
         break;
     }
-
-    /* todo: keep track of seen messages */
 
     }  // while true
 
