@@ -15,6 +15,7 @@
  * (message type constants, structures, error codes)
 */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <threads.h>
@@ -73,6 +74,9 @@
 
 /* suffix of an internal client error message (includes LF) */
 #define ERRSUF "\n"
+
+/* print internal client error (with `ERRPRE` and `ERRSUF`) */
+#define pinerror(s) fprintf(stderr, ERRPRE "%s" ERRSUF, (s))
 
 /* for STR() */
 #define STRSTR(x) #x

@@ -42,6 +42,7 @@
 #include "mmal.h"
 #include "udp_marker.h"  // udpm_free_res
 #include "udp_print_msg.h"  // udp_free_printer_resources
+#include "tcpcl.h"
 
 mtx_t gcl;
 
@@ -127,6 +128,7 @@ int main(int argc, char *argv[]) {
     int rc = 0;
 
     /* important: initialize configuration structure */
+    /* todo: move this to a function */
     conf_t conf = {
         .addr = NULL,
         .sockfd = -1,
@@ -156,7 +158,7 @@ int main(int argc, char *argv[]) {
     if (conf.tp == UDP) {
         rc = udp_main(&conf);
     } else {
-        log(FATAL, "tcp version not implemented yet");
+        rc = tcp_main(&conf);
     }
 
     cleanup:
