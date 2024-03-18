@@ -32,11 +32,9 @@
 #include "udpcl.h"
 #include "ipk24chat.h"
 #include "utils.h"
-#include "rwmsgid.h"
 #include "gexit.h"
 #include "mmal.h"
-#include "udp_render.h"
-#include "udp_confirmer.h"  // udp_cnfm_t
+#include "udp_confirmer.h"  // cnfm_data_t
 #include "udp_listener.h"  // LISTENER_TIMEOUT
 #include "udp_sender.h"  // udp_send
 #include "msg.h"  // msg_t

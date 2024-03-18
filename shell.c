@@ -41,7 +41,6 @@
  *
 */
 
-#define _POSIX_C_SOURCE 200809L  // getline
 #include <assert.h>
 #include <stdio.h>  // stdin
 #include <string.h>  // strlen
@@ -49,15 +48,10 @@
 #include <unistd.h>  // isatty, close
 #include <sys/epoll.h>
 
-#include "mmal.h"  // mgetline
-#include "ipk24chat.h"  // conf_t
+#include "mmal.h"
 #include "shell.h"
 #include "utils.h"
 #include "msg.h"  // msg_t
-#include "gexit.h"
-#include "udp_listener.h"  // LISTENER_TIMEOUT
-#include "udp_confirmer.h"  // cnfm_data_t
-#include "udp_sender.h"
 #include "udp_print_msg.h"  // str_isprint
 
 /* maximal field length including null byte */
