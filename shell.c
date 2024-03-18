@@ -60,10 +60,6 @@
 #include "udp_sender.h"
 #include "udp_print_msg.h"  // str_isprint
 
-/* initial buffer for the line (if needed, getline reallocs, so this doesnt
-matter all that much) */
-#define INIT_LINE_BUFSIZE 1024
-
 /* maximal field length including null byte */
 #define MFL 8192
 
@@ -74,7 +70,14 @@ matter all that much) */
 /* limited in length string (for a buffer-overflow-safe scanf format) */
 #define LLS "%" MFLS "s"
 
-/* strips the trailing line feed of a string if there is one */
+static void check_constants() {
+    /* check if the ipk24chat.h constants are ok with this file's constants */
+    static_assert(MAX_UNAME_LEN < MFL, "buffer too small, increase its size");
+    static_assert(MAX_CHID_LEN < MFL, "buffer too small, increase its size");
+    static_assert(MAX_SECRET_LEN < MFL, "buffer too small, increase its size");
+    static_assert(MAX_DNAME_LEN < MFL, "buffer too small, increase its size");
+}
+
 void rstriplf(char *s) {
     if (s == NULL) return;
     if (s[0] == '\0') return;
@@ -83,92 +86,13 @@ void rstriplf(char *s) {
     if (s[i] == '\n') s[i] = '\0';
 }
 
-/* returns if `s` starts with `prefix` */
 bool startswith(const char *s, const char *prefix) {
     if (strlen(s) < strlen(prefix)) return false;
     return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
-/**
- * UDP shell - authenticate:
- * Sets up a listener and sends AUTH message `auth_msg`, waits for both
- * CONFIRM and REPLY
- * @return 0 on succes else 1
- * @note success means the authentication went well, that is
- * the REPLY result field was 1
-*/
-static int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
-    assert(auth_msg->username != NULL);
-    assert(auth_msg->dname != NULL);
-    assert(auth_msg->secret != NULL);
-    int rc;
-
-    /* start listener thread (only to return immediately after receiving
-    both CONFIRM + REPLY for `auth_msg`, stops without the stop flag) */
-    log(DEBUG, "MAIN: starting listener");
-    thrd_t listener_thread_id;
-    mtx_t listener_mtx;
-    bool listener_stop_flag = false;
-    bool listener_done_flag = false;
-    bool listner_server_sent_bye = false;
-    if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
-        log(ERROR, "couldnt initialize lock");
-        return ERR_INTERNAL;
-    }
-    listener_args_t listener_args = {
-        .conf = conf,
-        .cnfm_data = cnfm_data,
-        .mtx = &listener_mtx,
-        .save_port = true,
-        .auth_msg_id = auth_msg->id,
-        .stop_flag = &listener_stop_flag,
-        .done_flag = &listener_done_flag,
-        .server_sent_bye = &listner_server_sent_bye
-    };
-    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
-    if (rc != thrd_success) {
-        log(ERROR, "couldnt create listener thread");
-        return ERR_INTERNAL;
-    }
-    gexit(GE_SET_LISTHR, &listener_thread_id);
-    gexit(GE_SET_STPFLG, &listener_stop_flag);
-    gexit(GE_SET_LISMTX, &listener_mtx);
-
-    /* send first AUTH message */
-    rc = udp_sender_send(auth_msg, conf, cnfm_data);
-    if (rc != 0) {
-        fprintf(stderr, ERRPRE "AUTH message wasn't confirmed" ERRSUF);
-        log(ERROR, "couldn't send");
-
-        /* let listener finish (else it would wait for the REPLY) */
-        mtx_lock(&listener_mtx);
-        listener_stop_flag = true;
-        mtx_unlock(&listener_mtx);
-    }
-
-
-    /* wait for the listener thread */
-    log(DEBUG, "waiting for listener thread");
-    int lrc;  // listener return code
-    thrd_join(listener_thread_id, &lrc);
-    gexit(GE_UNSET_LISTNR, NULL);
-    mtx_destroy(&listener_mtx);
-
-    logf(INFO, "REPLY came from port %hu", conf->port);
-    logf(INFO, "authentication %s", lrc == 0 ? "successful" : "error");
-
-    /* authentication success from listener + internal success */
-    return lrc == 0 and rc == 0 ? 0 : 1;
-}
-
-/**
- * @brief Parses /auth command and returns corresponding msg_t
- * if the command is invalid, returns NULL, if there is an internal error,
- * returns NULL and sets `error_occured` to true. Returned msg_t has
- * `id` field set to 0 and is expected to be then edited by the caller
- * @note returned msg_t needs to be freed with `msg_dtor`
-*/
-static msg_t *parse_auth(const char *line, bool *error_occured) {
+msg_t *parse_auth(const char *line, bool *error_occured) {
+    check_constants();
     int rc = 1;
     msg_t *output = NULL;
 
@@ -234,10 +158,7 @@ static msg_t *parse_auth(const char *line, bool *error_occured) {
     return output;
 }
 
-/**
- * same as parse_auth, but for /join
-*/
-static msg_t *parse_join(const char *line, bool *error_occured) {
+msg_t *parse_join(const char *line, bool *error_occured) {
 
     /* allocate chid buffer */
     char *chid = mmal(MFL);
@@ -271,7 +192,7 @@ static msg_t *parse_join(const char *line, bool *error_occured) {
     return output;
 }
 
-static char *parse_rename(char *line, bool *error_occurred) {
+char *parse_rename(char *line, bool *error_occurred) {
     char *dname = mmal(MFL);
     if (dname == NULL) {
         log(ERROR, MEMFAIL_MSG);
@@ -287,382 +208,22 @@ static char *parse_rename(char *line, bool *error_occurred) {
     return dname;
 }
 
-static inline bool iscommand(const char *s, const char *prfx) {
+static bool iscommand(const char *s, const char *prfx) {
     unsigned int i = strlen(prfx);
     return startswith(s, prfx) and (isspace(s[i]) or s[i] == '\0');
 }
 
-static inline bool is_auth(char *s) {
+bool is_auth(const char *s) {
     return iscommand(s, "/auth");
 }
-static inline bool is_join(char *s) {
+bool is_join(const char *s) {
     return iscommand(s, "/join");
 }
-static inline bool is_rename(char *s) {
+bool is_rename(const char *s) {
     return iscommand(s, "/rename");
 }
-static inline bool is_help(char *s) {
+bool is_help(const char *s) {
     return iscommand(s, "/help");
 }
 
 
-/**
- * UDP shell - loop endlessly:
- * starts listener, reads stdin, sends messages,
- * loops until listener is finished (incoming BYE) or until the end of user
- * input is reached or until the program is interrupted
- * @note run this function after the client is successfully authenticated
- * @return 0 on success else non-zero
-*/
-int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
-    int rc = 0;
-
-    /* start listener*/
-    log(DEBUG, "MAIN: starting listener");
-    thrd_t listener_thread_id;
-    mtx_t listener_mtx;
-    bool listener_stop_flag = false;
-    bool listener_done_flag = false;
-    bool listener_server_sent_bye = false;
-    if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
-        log(ERROR, "couldnt initialize lock");
-        return ERR_INTERNAL;
-    }
-    listener_args_t listener_args = {
-        .conf = conf,
-        .cnfm_data = cnfm_data,
-        .mtx = &listener_mtx,
-        .save_port = false,
-        .stop_flag = &listener_stop_flag,
-        .done_flag = &listener_done_flag,
-        .server_sent_bye = &listener_server_sent_bye
-    };
-    rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
-    if (rc != thrd_success) {
-        log(ERROR, "couldnt create listener thread");
-        return ERR_INTERNAL;
-    }
-    gexit(GE_SET_LISTHR, &listener_thread_id);
-    gexit(GE_SET_STPFLG, &listener_stop_flag);
-    gexit(GE_SET_LISMTX, &listener_mtx);
-
-    /**************************************************************************/
-    /* from now on the listener is started */
-
-    ssize_t read_chars = 0;
-    char *line = mmal(INIT_LINE_BUFSIZE);
-    if (line == NULL) { log(ERROR, MEMFAIL_MSG); return ERR_INTERNAL; }
-    size_t line_length = INIT_LINE_BUFSIZE;
-    msg_t *msg = NULL;
-
-    bool should_send_bye = true;
-
-    /* for parse_. calls */
-    bool error_occurred = false;
-    char *dname = NULL;
-
-    /* epoll boilerplate, but if stdin is a file all this is skipped */
-    /* epoll bp */ int epoll_fd = -1;
-    /* epoll bp */ if (isatty(0)) {
-    /* epoll bp */
-    /* epoll bp */ epoll_fd = epoll_create1(0);
-    /* epoll bp */ if (epoll_fd == -1) {
-    /* epoll bp */     log(FATAL, "couldn't create epoll instance");
-    /* epoll bp */     fprintf(stderr, ERRPRE "couldn't create epoll instance"
-    /* epoll bp */         ERRSUF);
-    /* epoll bp */     perror(ERRPRE "epoll_create1");
-    /* epoll bp */     return ERR_INTERNAL;
-    /* epoll bp */ }
-    /* epoll bp */ gexit(GE_SET_EPOLLFD, &epoll_fd);
-    /* epoll bp */ struct epoll_event stdin_event = {
-    /* epoll bp */     .data.fd = 0,
-    /* epoll bp */     .events = EPOLLIN
-    /* epoll bp */ };
-    /* epoll bp */ rc = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, 0, &stdin_event);
-    /* epoll bp */ if (rc != 0) {
-    /* epoll bp */     log(FATAL, "couldn't add epoll event");
-    /* epoll bp */     fprintf(stderr, ERRPRE "couldn't add epoll event"
-    /* epoll bp */         ERRSUF);
-    /* epoll bp */     perror(ERRPRE "epoll_ctl");
-    /* epoll bp */     return ERR_INTERNAL;
-    /* epoll bp */ }
-    /* epoll bp */ }  // if isatty
-    /* epoll bp */ struct epoll_event events[1];
-
-    bool done = false;
-    while (not done) {
-
-        /* while blocking for stdin, ocassionally check if listener hasnt
-        finished yet (if stdin is a file, this is never performed) */
-        bool should_wait = true;
-        while (epoll_fd != -1 and should_wait) {
-            int epr = epoll_wait(epoll_fd, events, 1, 100 *SH_STDIN_TIMEOUT_MS);
-            if (epr == 1) {
-                should_wait = false;
-            }
-            mtx_lock(&listener_mtx);
-            if (listener_done_flag) {
-                should_send_bye = not listener_server_sent_bye;
-                goto after_outer_loop;  // double break
-            }
-            mtx_unlock(&listener_mtx);
-        }
-
-        /* read one line (strip trailing LF) */
-        read_chars = mgetline(&line, &line_length, stdin);
-        if (read_chars < 1) {
-            log(INFO, "EOF reached, stopping...");
-            break;
-        }
-        rstriplf(line);
-        logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
-
-        /* check again whether listener is finished */
-        mtx_lock(&listener_mtx);
-        if (listener_done_flag) {
-            should_send_bye = not listener_server_sent_bye;
-            break;
-        }
-        mtx_unlock(&listener_mtx);
-
-        /* /join, /rename, /help or send message*/
-        if (is_auth(line)) {
-            fprintf(stderr, ERRPRE "already authenticated" ERRSUF);
-            continue;
-
-        } else if (is_join(line)) {
-
-            /* parse /join command */
-            error_occurred = false;
-            msg = parse_join(line, &error_occurred);
-
-            /* /join command was invalid */
-            if (msg == NULL and not error_occurred) {
-                fprintf(stderr, ERRPRE "invalid /join command" ERRSUF);
-                continue;
-            }
-
-            /* internal error occured while parsing */
-            if (msg == NULL and error_occurred) {
-                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
-                continue;
-            }
-
-            /* fill additional parameters and send*/
-            msg->id = (conf->cnt);
-            msg->dname = conf->dname;
-            rc = udp_sender_send(msg, conf, cnfm_data);
-
-            /* destroy message */
-            msg->dname = NULL;  // so conf->dname isnt wiped by msg_dtor
-            msg_dtor(msg);
-
-            /* was sending successfull? */
-            if (rc != 0) {
-                fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
-            }
-
-        } else if (is_rename(line)) {
-
-            /* parse /rename command */
-            error_occurred = false;
-            dname = parse_rename(line, &error_occurred);
-
-            /* couldnt allocate buffer */
-            if (dname == NULL and error_occurred) {
-                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
-                log(ERROR, MEMFAIL_MSG);
-                continue;
-            }
-
-            /* invalid display name */
-            if (dname == NULL and not error_occurred) {
-                fprintf(stderr, ERRPRE "invalid /rename command" ERRSUF);
-                log(ERROR, "invalid /rename command");
-                continue;
-            }
-
-            /* replace conf->dname */
-            mfree(conf->dname);
-            conf->dname = dname;
-
-        } else if (is_help(line)) {
-            printf(CMD_HELP_TXT);
-
-        /* else: inputted line is a message */
-        } else {
-
-            /* check the message content length */
-            if (strlen(line) > MAX_MSGCONT_LEN) {
-                fprintf(stderr, ERRPRE "message content too long" ERRSUF);
-                log(WARNING, "message too long, not sending");
-                continue;
-            }
-
-            /* don't send empty message */
-            if (strlen(line) == 0) {
-                fprintf(stderr, ERRPRE "cannot send empty message" ERRSUF);
-                log(WARNING, "message empty, not sending");
-                continue;
-            }
-
-            /* don't send non-printable characters */
-            if (not str_isprint(line)) {
-                fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
-                log(WARNING, "bad characters, not sending");
-                continue;
-            }
-
-            /* create message struct */
-            msg = msg_ctor();
-            if (msg == NULL) {
-                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
-                log(ERROR, MEMFAIL_MSG);
-                continue;
-            }
-            msg->type = MTYPE_MSG;
-            msg->id = conf->cnt;
-            conf->cnt += 1;
-            msg->dname = conf->dname;
-            msg->content = line;
-
-            /* send */
-            rc = udp_sender_send(msg, conf, cnfm_data);
-            if (rc != 0) {
-                fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
-            }
-
-            /* destroy message struct */
-            msg->dname = NULL;    // keep conf->dname for further use
-            msg->content = NULL;  // keep the buffer allocated
-            msg_dtor(msg);
-            msg = NULL;
-
-            /* check if listener is finished */
-            mtx_lock(&listener_mtx);
-            if (listener_done_flag) {
-                should_send_bye = not listener_server_sent_bye;
-                break;
-            }
-            mtx_unlock(&listener_mtx);
-
-        }  // line is a message
-
-    }  // while not done
-
-    after_outer_loop:
-
-    if (should_send_bye) {
-        msg_t bye = { .type = MTYPE_BYE, .id = LAST_MSGID };
-        udp_sender_send(&bye, conf, cnfm_data);
-    }
-
-    mfree(line);
-    /* from now we will let the listener finish */
-    /**************************************************************************/
-
-    /* let listener finish if it wasnt finished */
-    if (not listener_done_flag) {
-        mtx_lock(&listener_mtx);
-        listener_stop_flag = true;
-        mtx_unlock(&listener_mtx);
-    }
-
-    /* wait for the listener thread */
-    log(DEBUG, "waiting for listener thread");
-    int lrc;  // listener return code
-    thrd_join(listener_thread_id, &lrc);
-    gexit(GE_UNSET_LISTNR, NULL);
-    mtx_destroy(&listener_mtx);
-    logf(INFO, "listener finished with return code %d", lrc);
-
-    close(epoll_fd);
-    gexit(GE_UNSET_EPOLLFD, NULL);
-
-    return rc;
-}
-
-
-
-int udp_shell(conf_t *conf) {
-
-    /* check if the ipk24chat.h constants are ok with this file's constants */
-    static_assert(MAX_UNAME_LEN < MFL, "buffer too small, increase its size");
-    static_assert(MAX_CHID_LEN < MFL, "buffer too small, increase its size");
-    static_assert(MAX_SECRET_LEN < MFL, "buffer too small, increase its size");
-    static_assert(MAX_DNAME_LEN < MFL, "buffer too small, increase its size");
-
-    int rc = 0;
-    ssize_t read_chars = 0;
-    msg_t *msg = NULL;
-    udp_cnfm_data_t cnfm_data = { .arr = NULL, .len = 0 };
-    bool error_occured = false;
-
-    size_t line_length = INIT_LINE_BUFSIZE;
-    char *line = mmal(INIT_LINE_BUFSIZE);
-    if (line == NULL) { log(ERROR, MEMFAIL_MSG); return ERR_INTERNAL; }
-
-    bool authenticated = false;
-    while (not authenticated) {
-        log(DEBUG, "shell authentication looping");
-
-        /* read one line (blocking) */
-        read_chars = mgetline(&line, &line_length, stdin);
-        if (read_chars < 1) return 0;  // eof
-        rstriplf(line);
-        logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
-
-        if (is_help(line)) {
-            printf(CMD_HELP_TXT);
-            continue;
-        }
-
-        /* process the line */
-        msg = parse_auth(line, &error_occured);
-        if (error_occured) {
-            log(INFO, "internal error");
-            return ERR_INTERNAL;
-        }
-
-        /* invalid /auth command, try again */
-        if (msg == NULL) continue;
-
-        /* edit the id and increment counter */
-        msg->id = conf->cnt;
-        conf->cnt += 1;
-
-        /* try to authenticate with the server */
-        rc = udpsh_auth(conf, msg, &cnfm_data);
-
-        /* extract dname from msg and put a copy of it to conf */
-        char *dname = mstrdup(msg->dname);
-        if (dname == NULL) {
-            log(ERROR, MEMFAIL_MSG);
-            rc = ERR_INTERNAL;
-            break;
-        }
-
-        /* set or change the display name */
-        if (conf->dname != NULL) {
-            mfree(conf->dname);
-        }
-        conf->dname = dname;
-
-        msg_dtor(msg);
-        msg = NULL;
-        if (rc == 0) {
-            log(INFO, "successfully authenticated");
-            authenticated = true;
-        } else {
-            log(ERROR, "couldn't be authenticated");
-        }
-    }
-
-    gexit(GE_SET_CNFMDP, &cnfm_data);
-    udpsh_loop_endlessly(conf, &cnfm_data);
-    gexit(GE_UNSET_CNFMDP, NULL);
-
-    mfree(cnfm_data.arr);
-    mfree(line);
-    return rc;
-}

@@ -11,22 +11,53 @@
 *****************/
 
 /**
- * a module that processes stdin
+ * a module for stdin processing functions
 */
 #include "ipk24chat.h"  // conf_t
+#include "msg.h"  // msg_t
 
 #ifndef _S_H_E_L_L_H_
 #define _S_H_E_L_L_H_
+
+/* initial buffer for the line (if needed, getline reallocs, so this doesnt
+matter all that much) */
+#define INIT_LINE_BUFSIZE 1024
 
 /* while blocking for stdin, check if listener hasn't finished every this many
 miliseconds */
 #define SH_STDIN_TIMEOUT_MS 10  // todo: document this constant
 
 /**
- * Starts a "shell". The shell starts a listener, sends messages. Returns
- * when reaching the end of user input or upon receiving BYE.
- * @return 0 on success else non-zero
+ * @brief Parses /auth command and returns corresponding msg_t
+ * if the command is invalid, returns NULL, if there is an internal error,
+ * returns NULL and sets `error_occured` to true. Returned msg_t has
+ * `id` field set to 0 and is expected to be then edited by the caller
+ * @note returned msg_t needs to be freed with `msg_dtor`
 */
-int udp_shell(conf_t *conf);
+msg_t *parse_auth(const char *line, bool *error_occured);
+
+/**
+ * same as parse_auth, but for /join
+*/
+msg_t *parse_join(const char *line, bool *error_occured);
+
+/**
+ * parses /rename, returns a pointer to the display name string
+ * if the command is invalid, returns NULL, if there is an internal error,
+ * returns NULL and sets `error_occured` to true.
+*/
+char *parse_rename(char *line, bool *error_occurred);
+
+
+bool is_auth(const char *s);
+bool is_join(const char *s);
+bool is_rename(const char *s);
+bool is_help(const char *s);
+
+/* strips the trailing line feed of a string if there is one */
+void rstriplf(char *s);
+
+/* returns if `s` starts with `prefix` */
+bool startswith(const char *s, const char *prefix);
 
 #endif  // ifndef _S_H_E_L_L_H_
