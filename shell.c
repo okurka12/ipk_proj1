@@ -126,6 +126,7 @@ msg_t *parse_auth(const char *line, bool *error_occured) {
     }
 
     /* check printability of the stuff */
+    /* todo: displayname can be printable characters, but the other fields only A-z0-9- */
     bool uname_printable = str_isprint(username);
     bool secret_printable = str_isprint(secret);
     bool dname_printable = str_isprint(dname);
