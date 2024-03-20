@@ -15,7 +15,7 @@
 
 #include "udp_render.h"
 #include "mmal.h"
-#include "ipk24chat.h"  // msg_t
+#include "ipk24chat.h"  // message types 
 #include "rwmsgid.h"  // write_msgid
 #include "utils.h"
 #include "msg.h"  // msg_t
@@ -92,7 +92,7 @@ char *udp_render_message(const msg_t *msg, unsigned int *length) {
     case MTYPE_JOIN:
         assert(msg->chid != NULL);
         assert(msg->dname !=  NULL);
-        
+
         *length = 1 + 2 + strlen(msg->chid) + 1 + strlen(msg->dname) + 1;
         allocate(output, *length);
         output[0] = msg->type;
