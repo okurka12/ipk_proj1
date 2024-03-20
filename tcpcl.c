@@ -18,6 +18,7 @@
 #include <unistd.h>  // close
 #include <sys/epoll.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "ipk24chat.h"
 #include "tcpcl.h"
@@ -26,6 +27,12 @@
 #include "shell.h"
 #include "mmal.h"
 #include "tcp_render.h"
+
+/* does nothing */
+void handle_sigpipe(int sig) {
+    log(DEBUG, "program received SIGPIPE");
+    (void)sig;
+}
 
 /**
  * create socket and save it to `conf`
@@ -62,7 +69,7 @@ static int tcp_connect(conf_t *conf) {
 
     rc = connect(conf->sockfd, (struct sockaddr *)(&s), sizeof(s));
     if (rc == -1) {
-        pinerror("coudlnt connect");
+        pinerror("coudln't connect to host");
         perror(ERRPRE "connect");
         log(FATAL, "couldn't connect");
         return ERR_INTERNAL;
@@ -72,7 +79,7 @@ static int tcp_connect(conf_t *conf) {
 }
 
 int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
-    log(DEBUG, "sending");
+    logf(DEBUG, "sending %s msg id %hu", mtype_str(msg->id), msg->id);
     (void)msg;
     assert(conf->sockfd != -1);
 
@@ -80,43 +87,17 @@ int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
 
     ssize_t result = send(conf->sockfd, rendered, strlen(rendered), 0);
     mfree(rendered);
+    logf(DEBUG, "send returned %ld", result);
     if (result == -1) {
         pinerror("couldn't send");
         perror(ERRPRE "sendto");
         return ERR_INTERNAL;
     }
+    log(DEBUG, "successfully sent");
     return 0;
 }
 
-/**
- * creates an epoll instance and events EPOLLIN for the socket
- * and stdin if stdin is not a file
- * @return epoll fd on success else -1
-*/
-/* i dont know what i was trying to do here */
-// int tcp_epoll(conf_t *conf) {
-//     int rc;
-//     if (isatty(0)) {
-//     }
-
-//     /* create epoll instance */
-//     int epoll_fd = epoll_create1(0);
-//     if (epoll_fd == -1) {
-//         pinerror("couldn't create epoll instance");
-//         perror(ERRPRE "epoll_create1");
-//         log(FATAL, "couldn't create epoll instance");
-//         return -1;
-//     }
-
-//     struct epoll_event sock_event = {
-//         .data.fd = conf->sockfd,
-//         .events = EPOLLIN
-//     };
-
-//     rval = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_fd, &sock_event);
-//     assert(rval == 0);
-
-// }
+int tcp_recv_auth();
 
 int tcp_auth_loop(conf_t *conf ) {
 
@@ -144,6 +125,12 @@ int tcp_auth_loop(conf_t *conf ) {
             break;
         }
 
+        if (is_help(line)) {
+            printf(CMD_HELP_TXT);
+            continue;
+        }
+
+        /* try to parse /auth command */
         bool error_occured = false;
         msg = parse_auth(line, &error_occured);
         if (msg == NULL and error_occured) {
@@ -175,6 +162,8 @@ int tcp_auth_loop(conf_t *conf ) {
 int tcp_main(conf_t *conf) {
 
     int rc = 0;
+
+    signal(SIGPIPE, handle_sigpipe);
 
     rc = tcp_create_socket(conf);
     if (rc != 0) {
