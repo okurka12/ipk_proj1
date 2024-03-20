@@ -37,8 +37,8 @@ static struct udpm_data *udpm_get_data(bool freedata) {
     static struct udpm_data *datap = NULL;
 
     if (freedata) {
-        mfree(datap);
         if (datap != NULL) mfree(datap->arr);
+        mfree(datap);
         datap = NULL;
         return NULL;
     }
