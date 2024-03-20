@@ -11,9 +11,23 @@
 NUM=7
 FILE=tcpdump.log
 
-# no arguments?
+USAGE="Usage: ./sniff.sh tcp|udp HOST [port]"
+
+# no first argument
 if [ "$1" = "" ]; then
-    echo "Usage: ./sniff.sh HOST"
+    echo "$USAGE"
+    exit
+fi
+
+# first argument is not tcp|udp
+if [ "$1" != "tcp" -a "$1" != "udp" ]; then
+    echo "$USAGE"
+    exit
+fi
+
+# no second argument
+if [ "$2" = "" ]; then
+    echo "$USAGE"
     exit
 fi
 
@@ -26,17 +40,35 @@ if [ -f "$FILE" ]; then
     fi
 fi
 
-# log date
+# tcp with no port filter?
+if [ "$3" = "" ]; then
+    echo -n "capturing tcp with no port filter generates very large files, \
+continue? (y/n) "
+    read TCP_NOFILT_CONT
+    if [ $TCP_NOFILT_CONT != "y" ]; then
+        exit
+    fi
+fi
+
+# either filter by port directly by tcpdump or dont
+if [ "$3" != "" ]; then
+    PORTFI="port $3"
+fi
+
+
+TCPD="sudo tcpdump -X -l -i lo ip and ($1 $PORTFI or icmp)"
+TEELOG="tee -a $FILE"
+GREPFILT="grep -F --color=auto $2 -A $NUM"
+
+# log date and command to console
 echo -n "todays date: "
 date
+echo "$TCPD | $TEELOG | $GREPFILT"
+
+# log date and command to file
 echo "" >> $FILE
 date >> $FILE
+echo "$TCPD | $TEELOG | $GREPFILT" >> $FILE
 
-
-
-TCPD="sudo tcpdump -X -l -i any ip and (udp or icmp)"
-TEELOG="tee -a $FILE"
-GREPFILT="grep -F --color=auto $1 -A $NUM"
-
-echo "$TCPD | $TEELOG | $GREPFILT"
+# run the thing
 $TCPD | $TEELOG | $GREPFILT
