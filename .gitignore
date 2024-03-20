@@ -10,3 +10,4 @@ real_????.txt
 smazat.py
 run*.log
 valgrind.txt
+.vscode
