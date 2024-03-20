@@ -41,7 +41,7 @@ class Message:
         text = data.decode("utf-8")
 
         if text.lower().startswith("auth"):
-            match_obj = re.match(AUTH_PATTERN, text)
+            match_obj = re.match(AUTH_PATTERN, text, flags=re.IGNORECASE)
             if match_obj is None:
                 # todo: send err?
                 tprint(f"couldn't parse {data}")
@@ -56,7 +56,7 @@ class Message:
         suf = ""  # suffix
         delim = "\n"  # delimiter
 
-        output = pre
+        output = f"Type: {self.type}" + delim
         if self.username is not None:
             output += f"Username: {self.username}" + delim
         if self.displayname is not None:
@@ -65,6 +65,10 @@ class Message:
             output += f"Secret: {self.secret}" + delim
 
         return output + suf
+
+    def __getattr__(self, name: str):
+        """eliminates exceptions by returning None"""
+        return None
 
 
 
