@@ -213,8 +213,8 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
                 continue;
             }
 
-            /* fill additional parameters and send*/
-            msg->id = (conf->cnt);
+            /* fill additional parameters and send */
+            msg->id = conf->cnt; conf->cnt += 1;
             msg->dname = conf->dname;
             rc = udp_sender_send(msg, conf, cnfm_data);
 
