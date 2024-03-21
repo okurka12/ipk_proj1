@@ -35,17 +35,17 @@ fi
 if [ -f "$FILE" ]; then
     echo -n "append to '$FILE'? (y/n) "
     read APPEND
-    if [ $APPEND != "y" ]; then
+    if [ "$APPEND" != "y" ]; then
         exit
     fi
 fi
 
 # tcp with no port filter?
-if [ "$3" = "" ]; then
+if [ "$1" = "tcp" -a "$3" = "" ]; then
     echo -n "capturing tcp with no port filter generates very large files, \
 continue? (y/n) "
     read TCP_NOFILT_CONT
-    if [ $TCP_NOFILT_CONT != "y" ]; then
+    if [ "$TCP_NOFILT_CONT" != "y" ]; then
         exit
     fi
 fi
@@ -55,8 +55,21 @@ if [ "$3" != "" ]; then
     PORTFI="port $3"
 fi
 
+# todo: ask whether capture on loopback or any
+echo -n "Capture on loopback interface (l) or any interface (a)? "
+read CAPT_INTER
+if [ "$CAPT_INTER" = "l" ]; then
+    INTERFI=lo
+fi
+if [ "$CAPT_INTER" = "a" ]; then
+    INTERFI=any
+fi
+if [ "$INTERFI" = "" ]; then
+    exit
+fi
 
-TCPD="sudo tcpdump -X -l -i lo ip and ($1 $PORTFI or icmp)"
+
+TCPD="sudo tcpdump -X -l -i $INTERFI ip and ($1 $PORTFI or icmp)"
 TEELOG="tee -a $FILE"
 GREPFILT="grep -F --color=auto $2 -A $NUM"
 
