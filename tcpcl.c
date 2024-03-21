@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <ctype.h>  // isprint
 #include <arpa/inet.h>  // inet_pton, htons
 #include <netinet/in.h>  // struct sockaddr_in
 #include <unistd.h>  // close
@@ -27,6 +28,52 @@
 #include "shell.h"
 #include "mmal.h"
 #include "tcp_render.h"
+#include "gexit.h"  // GE_SET_FD
+
+#define TCP_READBUF_SIZE 128000  /* todo: document this constant */
+
+/* reads data up to CRLF, returns dynamically allcoated buffer */
+static char *tcp_myrecv(conf_t *conf) {
+
+    char *buf = mcal(TCP_READBUF_SIZE, 1);
+    size_t write_idx = 0;
+    if (buf == NULL) {
+        pinerror(MEMFAIL_MSG);
+        log(ERROR, MEMFAIL_MSG);
+        return NULL;
+    }
+
+    enum { S_CHAR, S_CR } state = S_CHAR;
+
+    ssize_t rc = 0;
+    bool done = false;
+    while (not done) {
+        char c;
+        rc = recv(conf->sockfd, &c, 1, 0);
+        if (rc == -1) {
+            pinerror("couldn't recv");
+            perror(ERRPRE "recv");
+            mfree(buf);
+            return NULL;
+        }
+        logf(DEBUG, "got char: %c (0x%02hhx) state=%d", isprint(c) ? c : '.', c, state);
+        buf[write_idx] = c;
+        write_idx++;
+
+        /* state transition */
+        switch (state) {
+        case S_CHAR:
+            if (c == '\r') state = S_CR;
+            break;
+
+        case S_CR:
+            if (c == '\n') done = true;
+            break;
+        }
+    }
+
+    return buf;
+}
 
 /* does nothing */
 void handle_sigpipe(int sig) {
@@ -97,7 +144,7 @@ int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
     return 0;
 }
 
-int tcp_recv_auth();
+// int tcp_recv_auth();
 
 int tcp_auth_loop(conf_t *conf ) {
 
@@ -145,8 +192,13 @@ int tcp_auth_loop(conf_t *conf ) {
         /* tcp send */
         tcp_send(conf, msg);
         /* tcp recv */
+        char *reply = tcp_myrecv(conf);
+        logf(DEBUG, "yo server replied: %s", reply);
+        /* parse reply */
         /* copy dname */
 
+        mfree(reply);
+        reply = NULL;
         msg_dtor(msg);
         msg = NULL;
 
@@ -169,6 +221,7 @@ int tcp_main(conf_t *conf) {
     if (rc != 0) {
         return ERR_INTERNAL;
     }
+    gexit(GE_SET_FD, &conf->sockfd);
 
     rc = tcp_connect(conf);
     if (rc != 0) {
