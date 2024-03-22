@@ -38,9 +38,11 @@ bool tcp_parse_reply(char *data, char **content, bool *err) {
         return false;
     }
 
+    /* todo: register `pattern` in gexit? */
+
     /* try to match the regex */
-    size_t nmatch = 3;  // whole match, first group, second group
-    regmatch_t regmatches[3];
+    const size_t nmatch = 3;  // whole match, first group, second group
+    regmatch_t regmatches[nmatch];
     rc = regexec(&pattern, data, nmatch, regmatches, 0);
     if (rc != 0) {
         log(WARNING, "couldn't match REPLY");
@@ -51,11 +53,17 @@ bool tcp_parse_reply(char *data, char **content, bool *err) {
         return false;
     }
 
+    /* change CR to null byte */
     data[regmatches[0].rm_eo] = '\0';
+
+    /* return the content index in the original data */
     *content = data + regmatches[2].rm_so;
+
+    // len("OK") is 2 and len("NOK") is 3
     bool reply_ok = regmatches[1].rm_eo - regmatches[1].rm_so == 2;
 
-    logf(DEBUG, "successfully matched, reply_success=%d, content='%s'", reply_ok, *content);
+    logf(DEBUG, "successfully matched, reply_success=%d, content='%s'",
+        reply_ok, *content);
 
     regfree(&pattern);
     return reply_ok;
