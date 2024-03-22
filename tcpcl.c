@@ -57,7 +57,11 @@ static char *tcp_myrecv(conf_t *conf) {
             mfree(buf);
             return NULL;
         }
-        logf(DEBUG, "got char: %c (0x%02hhx) state=%d", isprint(c) ? c : '.', c, state);
+
+        /* hard core logging (but could be useful) */
+        // logf(DEBUG, "got char: %c (0x%02hhx) state=%d",
+        //     isprint(c) ? c : '.', c, state);
+
         buf[write_idx] = c;
         write_idx++;
 
@@ -149,6 +153,7 @@ int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
 
 int tcp_auth_loop(conf_t *conf ) {
 
+    /* buffer for a line */
     size_t line_length = INIT_LINE_BUFSIZE;
     char *line = mmal(INIT_LINE_BUFSIZE);
     if (line == NULL) {
@@ -159,9 +164,7 @@ int tcp_auth_loop(conf_t *conf ) {
 
     bool done = false;
     msg_t *msg = NULL;
-
     while (not done) {
-
         ssize_t getlinerc = mgetline(&line, &line_length, stdin);
         if (getlinerc == -1 and errno == ENOMEM) {
             pinerror(MEMFAIL_MSG);
@@ -190,30 +193,44 @@ int tcp_auth_loop(conf_t *conf ) {
             continue;
         }
 
-        /* tcp send */
+        /* send AUTH message */
         tcp_send(conf, msg);
-        /* tcp recv */
-        char *reply = tcp_myrecv(conf);
-        logf(DEBUG, "yo server replied: %s", reply);
+
+        /* wait for REPLY message */
+        char *reply_data = tcp_myrecv(conf);
+        logf(DEBUG, "yo server replied: %s", reply_data);
+
         /* parse reply */
         char *content;
         bool err = false;
-        bool reply_ok = tcp_parse_reply(reply, &content, &err);
+        bool reply_success = tcp_parse_reply(reply_data, &content, &err);
+        if (err) {
+            log(ERROR, "internal error of tcp_parse_reply");
+            return ERR_INTERNAL;
+        }
+        if (content == NULL) {
+            log(FATAL, "malformed REPLY message, don't know what to do");
+            done = true;
+
+        } else {  // reply message has the correct format
+            fprintf(stderr, "%s: %s\n", reply_success ? "Success" : "Failure",
+                content);
+            done = reply_success;  // either break or redo the auth process
+        }
 
         /* copy dname */
+        if (conf->dname != NULL) mfree(conf->dname);
+        conf->dname = msg->dname;
+        msg->dname = NULL;  // so it's not wiped by msg_dtor
 
-        mfree(reply);
-        reply = NULL;
+        mfree(reply_data);
+        reply_data = NULL;
         msg_dtor(msg);
-        msg = NULL;
-
     }
 
     mfree(line);
     line = NULL;
-
     return 0;
-
 }
 
 int tcp_main(conf_t *conf) {
@@ -235,8 +252,11 @@ int tcp_main(conf_t *conf) {
         return ERR_INTERNAL;
     }
 
-    tcp_auth_loop(conf);
-
+    rc = tcp_auth_loop(conf);
+    if (rc != 0) {
+        log(ERROR, "auth process went not well");
+        return rc;
+    }
 
     close(conf->sockfd);
     conf->sockfd = -1;
