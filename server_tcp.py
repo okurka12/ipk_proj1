@@ -17,7 +17,7 @@ PRINT_RAW = True
 AUTH_SUCCES = True
 
 # print bloat?
-VERBOSE = False
+VERBOSE = True
 
 BIND_IP = "0.0.0.0"
 BIND_PORT = 4567
@@ -34,10 +34,31 @@ AUTH_PATTERN = r"AUTH " + RE_USERNAME + r" AS " + RE_DISPLAYNAME  + \
 r" USING " + RE_SECRET + r"\r\n"
 
 
+class Connection:
+    """container for the socket and address"""
+    def __init__(self, sock: socket.socket, addr: tuple[str, int]) -> None:
+        sock.setblocking(False)
+        self.sock = sock
+        self.addr = addr[0]
+        self.port = addr[1]
+        self.active = True
+    def __repr__(self) -> str:
+        return f"{self.addr}:{self.port}"
+    def set_inactive(self) -> None:
+        self.active = False
+
+
 class Message:
-    def __init__(self, data: bytes) -> None:
+    """container for the parsed message + who it came from"""
+    def __init__(self, data: bytes, conn: Connection) -> None:
+        """
+        parse message `data`, also save `conn` so it can be known where
+        to send a reply to this message
+        """
+
         self.type = "unknown"
         self.raw_data = data
+        self.conn = conn
         text = data.decode("utf-8")
 
         if text.lower().startswith("auth"):
@@ -71,19 +92,6 @@ class Message:
         return None
 
 
-
-class Connection:
-    def __init__(self, sock: socket.socket, addr: tuple[str, int]) -> None:
-        sock.setblocking(False)
-        self.sock = sock
-        self.addr = addr[0]
-        self.port = addr[1]
-        self.active = True
-    def __repr__(self) -> str:
-        return f"{self.addr}:{self.port}"
-    def set_inactive(self) -> None:
-        self.active = False
-
 connections: Set[Connection] = set()
 
 
@@ -94,6 +102,11 @@ def print_time(lf=False):
 def tprint(*args, **kwargs):
     print_time()
     print(*args, **kwargs)
+
+def vtprint(*args, **kwargs):
+    """like `tprint` but only if `VERBOSE`"""
+    if VERBOSE:
+        tprint(*args, *kwargs)
 
 
 def clean_connections():
@@ -109,6 +122,21 @@ def print_connections() -> None:
     tprint(f"there are {len(connections)} clients connected: {connections}")
 
 
+def process_msg(msg: Message) -> None:
+    """
+    process the message, send an individual reply (REPLY) to `sock`
+    todo: send MSGs to all?
+    """
+    if msg.type == MTYPE_AUTH:
+        vtprint(f"Sending REPLY with success={AUTH_SUCCES} to {msg.conn}")
+        succ = "Successfully authenticated" if AUTH_SUCCES \
+            else "Couldn't authenticate"
+        reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}"
+        oknok = "OK" if AUTH_SUCCES else "NOK"
+        whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
+        msg.conn.sock.sendall(whole_reply.encode("utf-8"))
+
+
 def try_recv(conn: Connection):
     """
     try to call recv on `conn` (non-blocking socket)
@@ -116,14 +144,17 @@ def try_recv(conn: Connection):
     """
     sock = conn.sock
     try:
-        data = sock.recv(65536)
+        data = sock.recv(65536)  # todo: handle ConnectionResetError
         if (len(data) == 0):
             conn.set_inactive()
             tprint(f"{conn} disconnected")
             return
 
         # parse the data
-        msg = Message(data)
+        msg = Message(data, conn)
+
+        # send a reply
+        process_msg(msg)
 
         # print the message
         tprint(f"\n{len(data)} B from {conn}:")
@@ -144,9 +175,6 @@ def accept_loop() -> None:
     sock.setblocking(False)
 
     while True:
-
-        if VERBOSE:
-            print_connections()
 
         # add new connection if there is one
         try:
