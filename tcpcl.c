@@ -29,6 +29,7 @@
 #include "mmal.h"
 #include "tcp_render.h"
 #include "gexit.h"  // GE_SET_FD
+#include "tcp_parse.h"
 
 #define TCP_READBUF_SIZE 128000  /* todo: document this constant */
 
@@ -195,6 +196,10 @@ int tcp_auth_loop(conf_t *conf ) {
         char *reply = tcp_myrecv(conf);
         logf(DEBUG, "yo server replied: %s", reply);
         /* parse reply */
+        char *content;
+        bool err = false;
+        bool reply_ok = tcp_parse_reply(reply, &content, &err);
+
         /* copy dname */
 
         mfree(reply);
