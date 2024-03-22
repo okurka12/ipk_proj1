@@ -30,7 +30,7 @@ char *tcp_render(const msg_t *msg) {
     switch (msg->type) {
         case MTYPE_AUTH:
             rc = snprintf(output, TCP_RENDER_BUFSIZE,
-            "AUTH %s AS %s USING %s\r\n",
+            "aUtH %s aS %s uSinG %s\r\n",
             msg->username, msg->dname, msg->secret);
             if (rc == TCP_RENDER_BUFSIZE) {
                 log(WARNING, "message was truncated");
