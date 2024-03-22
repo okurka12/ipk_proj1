@@ -257,26 +257,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         /* else: inputted line is a message */
         } else {
 
-            /* check the message content length */
-            if (strlen(line) > MAX_MSGCONT_LEN) {
-                fprintf(stderr, ERRPRE "message content too long" ERRSUF);
-                log(WARNING, "message too long, not sending");
-                continue;
-            }
-
-            /* don't send empty message */
-            if (strlen(line) == 0) {
-                fprintf(stderr, ERRPRE "cannot send empty message" ERRSUF);
-                log(WARNING, "message empty, not sending");
-                continue;
-            }
-
-            /* don't send non-printable characters */
-            if (not str_isprint(line)) {
-                fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
-                log(WARNING, "bad characters, not sending");
-                continue;
-            }
+            if (not message_valid(line)) continue;
 
             /* create message struct */
             msg = msg_ctor();

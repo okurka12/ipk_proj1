@@ -60,4 +60,10 @@ void rstriplf(char *s);
 /* returns if `s` starts with `prefix` */
 bool startswith(const char *s, const char *prefix);
 
+/**
+ * returns if a line is valid to be sent as a MSG message
+ * if it's not, prints appropriate error message to stderr
+*/
+bool message_valid(const char *line);
+
 #endif  // ifndef _S_H_E_L_L_H_

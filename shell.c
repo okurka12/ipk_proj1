@@ -221,4 +221,31 @@ bool is_help(const char *s) {
     return iscommand(s, "/help");
 }
 
+bool message_valid(const char *line) {
+    assert(line != NULL);
+
+    /* check the message content length */
+    if (strlen(line) > MAX_MSGCONT_LEN) {
+        fprintf(stderr, ERRPRE "message content too long" ERRSUF);
+        log(WARNING, "message too long, not sending");
+        return false;
+    }
+
+    /* don't send empty message */
+    if (strlen(line) == 0) {
+        fprintf(stderr, ERRPRE "cannot send empty message" ERRSUF);
+        log(WARNING, "message empty, not sending");
+        return false;
+    }
+
+    /* don't send non-printable characters */
+    if (not str_isprint(line)) {
+        fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
+        log(WARNING, "bad characters, not sending");
+        return false;
+    }
+
+    return true;
+}
+
 
