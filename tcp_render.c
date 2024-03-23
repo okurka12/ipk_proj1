@@ -62,6 +62,10 @@ char *tcp_render(const msg_t *msg) {
             warn(rc, TCP_RENDER_BUFSIZE);
             break;
 
+        case MTYPE_BYE:
+            strcpy(output, "bYe\r\n");
+            break;
+
         default:
             logf(WARNING, "unhandled type %s", mtype_str(msg->type));
             break;
