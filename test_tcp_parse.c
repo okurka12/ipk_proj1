@@ -30,6 +30,9 @@ assert((str, res == expected))
 
 int main() {
     enum parse_result res;
-    test("msg from server is hello", PR_MSG);
-    test("err from server is hello", PR_ERR);
+    test("mSg frOm server iS hello, this is a message\r\n",  PR_MSG);
+    test("eRr froM server iS hello, this is an error\r\n",   PR_ERR);
+    test("rePly nOk iS yo this is a unsuccessful reply\r\n", PR_REPLY_NOK);
+    test("rEply oK iS yo this is a successful reply\r\n",    PR_REPLY_OK);
+    test("bYe\r\n",                                          PR_BYE);
 }

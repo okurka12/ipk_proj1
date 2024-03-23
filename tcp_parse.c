@@ -94,6 +94,8 @@ bool tcp_parse_reply(char *data, char **content, bool *err) {
 enum parse_result tcp_parse_any(char *data) {
     check_ipk_constants();
 
+    /* lets hope SIGINT wont come between regcomp and regfree :shrug: */
+
     int rc = 0;
     char errmsg[ERRMSG_BUFSIZE];
 
@@ -131,17 +133,44 @@ enum parse_result tcp_parse_any(char *data) {
     regmatch_t rms[nmatch];
     enum parse_result output = PR_UNKNOWN;
 
+    /* MSG */
     if (regexec(&msg_pat, data, nmatch, rms, 0) == 0) {
         data[rms[1].rm_eo] = '\0';
         data[rms[2].rm_eo] = '\0';
         printf("%s: %s\n", data + rms[1].rm_so, data + rms[2].rm_so);
         output = PR_MSG;
+
+    /* ERR */
     } else if (regexec(&err_pat, data, nmatch, rms, 0) == 0) {
         data[rms[1].rm_eo] = '\0';
         data[rms[2].rm_eo] = '\0';
         fprintf(stderr, "ERR FROM %s: %s\n", data + rms[1].rm_so,
             data + rms[2].rm_so);
         output = PR_ERR;
+
+    /* BYE */
+    } else if (regexec(&bye_pat, data, nmatch, rms, 0) == 0) {
+        output = PR_BYE;
+
+    /* REPLY */
+    } else if (regexec(&reply_pat, data, nmatch, rms, 0) == 0) {
+        char *content = NULL;
+        bool reply_success = false;
+        bool err = false;
+        reply_success = tcp_parse_reply(data, &content, &err);
+        if (err) {
+            output = PR_ERR_INTERNAL;
+
+        } else if (content == NULL) {
+            output = PR_UNKNOWN;
+
+        } else {  // content is not NULL and err is false
+
+            output = reply_success ? PR_REPLY_OK : PR_REPLY_NOK;
+            fprintf(stderr, "%s: %s\n", reply_success ? "Success" : "Failure",
+                content);
+        }
+
     }
 
     regfree(&msg_pat);

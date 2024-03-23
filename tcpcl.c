@@ -386,22 +386,17 @@ static int tcp_auth_loop(conf_t *conf ) {
         char *reply_data = tcp_myrecv(conf);
         logf(DEBUG, "yo server replied: %s", reply_data);
 
-        /* parse reply */
-        char *content;
-        bool err = false;
-        bool reply_success = tcp_parse_reply(reply_data, &content, &err);
-        if (err) {
-            log(ERROR, "internal error of tcp_parse_reply");
+        /* parse reply (reply is printed by the parse fn) */
+        enum parse_result pr = tcp_parse_any(reply_data);
+        if (pr == ERR_INTERNAL) {
+            pinerror("error parsing REPLY");
+            log(ERROR, "error parsing REPLY");
             return ERR_INTERNAL;
-        }
-        if (content == NULL) {
-            log(FATAL, "malformed REPLY message, don't know what to do");
-            done = true;
-
-        } else {  // reply message has the correct format
-            fprintf(stderr, "%s: %s\n", reply_success ? "Success" : "Failure",
-                content);
-            done = reply_success;  // either break or redo the auth process
+        } else if (pr != PR_REPLY_NOK and pr != PR_REPLY_OK) {
+            pinerror("server sent unexpected message type");
+            log(WARNING, "server sent unexpected message type");
+        } else {
+            done = pr == PR_REPLY_OK;  // if auth successful, end loop
         }
 
         /* copy dname */
