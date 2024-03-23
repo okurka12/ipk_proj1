@@ -122,4 +122,4 @@ test_tcp_parse.bin: test_tcp_parse.c tcp_parse.o
 
 test: test_argparse.bin test_tcp_parse.bin
 	./test.sh
-	@echo "Additionally, run ./test_tcp_parse.bin"
+	./test_tcp_parse.bin
