@@ -17,7 +17,7 @@ PRINT_RAW = True
 AUTH_SUCCES = True
 
 # print bloat?
-VERBOSE = True
+VERBOSE = False
 
 BIND_IP = "0.0.0.0"
 BIND_PORT = 4567
@@ -31,7 +31,12 @@ RE_DISPLAYNAME = r"([!-~]{1,20})"
 RE_SECRET = r"((?:[A-z]|[0-9]|-){1,128})"
 
 AUTH_PATTERN = r"AUTH " + RE_USERNAME + r" AS " + RE_DISPLAYNAME  + \
-r" USING " + RE_SECRET + r"\r\n"
+r" USING " + RE_SECRET
+
+# timeout for the recv loop
+# recommended: 0.2 if human uses client, else something lowe
+RL_TIMEO = 0.2
+# RL_TIMEO = 0.05
 
 
 class Connection:
@@ -59,13 +64,17 @@ class Message:
         self.type = "unknown"
         self.raw_data = data
         self.conn = conn
-        text = data.decode("utf-8")
+        try:
+            text = data.decode("utf-8")
+        except Exception as e:
+            tprint(f"{conn} sent weird data: {data} it resulted in {e}")
+            text = ""
 
         if text.lower().startswith("auth"):
             match_obj = re.match(AUTH_PATTERN, text, flags=re.IGNORECASE)
             if match_obj is None:
                 # todo: send err?
-                tprint(f"couldn't parse {data}")
+                tprint(f"couldn't parse '{text}' as AUTH")
                 return
             self.type = MTYPE_AUTH
             self.username = match_obj[1]
@@ -137,30 +146,51 @@ def process_msg(msg: Message) -> None:
         msg.conn.sock.sendall(whole_reply.encode("utf-8"))
 
 
+def parse_many(data: bytes, conn: Connection) -> list[Message]:
+    """
+    split `data` by CRLF and return a list of the individual messages
+    """
+    output = []
+    tprint(f"messages from {conn}")
+    for ind_data in data.split(b"\r\n"):
+        if len(ind_data) == 0:
+            continue
+        tprint(f"    raw {ind_data}")
+        output.append(Message(ind_data, conn))
+    return output
+
+
 def try_recv(conn: Connection):
     """
     try to call recv on `conn` (non-blocking socket)
     if there is no data, do nothing
     """
-    sock = conn.sock
-    try:
-        data = sock.recv(65536)  # todo: handle ConnectionResetError
-        if (len(data) == 0):
+    try:  # except BlockingIOError
+
+        try:  # except ConnectionResetError
+            data = conn.sock.recv(65536)  # todo: handle
+            if (len(data) == 0):
+                conn.set_inactive()
+                tprint(f"{conn} disconnected")
+                return
+        except ConnectionResetError:  # recv
+            tprint(f"ConnectionResetError with {conn}")
             conn.set_inactive()
-            tprint(f"{conn} disconnected")
-            return
 
         # parse the data
-        msg = Message(data, conn)
+        vtprint(f"{len(data)} B from {conn}:")
+        mesages = parse_many(data, conn)
 
-        # send a reply
-        process_msg(msg)
+        for msg in mesages:
 
-        # print the message
-        tprint(f"\n{len(data)} B from {conn}:")
-        if PRINT_RAW:
-            print(msg.raw_data)
-        print(msg)
+            # send a reply
+            process_msg(msg)
+
+            # print the message
+            if VERBOSE and PRINT_RAW:
+                print(msg.raw_data)
+            if VERBOSE:
+                print(msg)
 
     except BlockingIOError:
         pass
@@ -193,7 +223,7 @@ def accept_loop() -> None:
         clean_connections()
 
         # let cpu rest after all the hard work
-        sleep(0.2)
+        sleep(RL_TIMEO)
 
 
 def main() -> None:
