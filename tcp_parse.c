@@ -95,6 +95,7 @@ enum parse_result tcp_parse_any(char *data) {
     check_ipk_constants();
 
     /* lets hope SIGINT wont come between regcomp and regfree :shrug: */
+    logf(DEBUG, "parsing: '%s'", data);
 
     int rc = 0;
     char errmsg[ERRMSG_BUFSIZE];
