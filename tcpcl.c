@@ -33,6 +33,8 @@
 
 #define TCP_READBUF_SIZE 128000  /* todo: document this constant */
 
+#define TCP_LOOP_MS 10 /* todo: document this constant */
+
 /* reads data up to CRLF, returns dynamically allcoated buffer */
 static char *tcp_myrecv(conf_t *conf) {
 
@@ -130,6 +132,10 @@ static int tcp_connect(conf_t *conf) {
     return 0;
 }
 
+/**
+ * send msg to conf->sockfd
+ * return 0 on success
+*/
 int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
     logf(DEBUG, "sending %s msg id %hu", mtype_str(msg->id), msg->id);
     (void)msg;
@@ -149,9 +155,189 @@ int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
     return 0;
 }
 
-// int tcp_recv_auth();
+/**
+ * loops over stdin, receives data (todo: make it able to print them)
+ * at the end it DOESN'T send BYE message...
+ * @return 0 on success else non-zero
+*/
+static int tcp_loop(conf_t *conf) {
+    int rc = 0;
 
-int tcp_auth_loop(conf_t *conf ) {
+    /* buffer for a line */
+    size_t line_length = INIT_LINE_BUFSIZE;
+    char *line = mmal(INIT_LINE_BUFSIZE);
+    if (line == NULL) {
+        pinerror(MEMFAIL_MSG);
+        log(ERROR, MEMFAIL_MSG);
+        return ERR_INTERNAL;
+    }
+
+    /* epoll stuff */
+    int epoll_fd = epoll_create1(0);
+    if (epoll_fd == -1) {
+        pinerror("couldnn't create epoll instance");
+        perror(ERRPRE "epoll_create1");
+        log(ERROR, "epoll_create failed");
+        return ERR_INTERNAL;
+    }
+    gexit(GE_SET_EPOLLFD, &epoll_fd);
+    struct epoll_event sock_event = {
+        .data.fd = conf->sockfd,
+        .events = EPOLLIN
+    };
+    rc = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conf->sockfd, &sock_event);
+    if (rc != 0) {
+        pinerror("epoll_ctl failed");
+        perror(ERRPRE "epoll_ctl");
+        log(ERROR, "epoll_ctl failed");
+        return ERR_INTERNAL;
+    }
+
+    /* either block on both stdin and the socket, or set a short timeout */
+    int timeout = -1;
+    struct epoll_event stdin_event = { .data.fd = 0, .events = EPOLLIN };
+    if (isatty(0)) {
+        timeout = -1;
+        rc = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, 0, &stdin_event);
+        if (rc != 0) {
+            pinerror("epoll_ctl failed");
+            perror(ERRPRE "epoll_ctl");
+            log(ERROR, "epoll_ctl failed");
+            return ERR_INTERNAL;
+        }
+    } else {  // stdin is non-blocking
+        timeout = TCP_LOOP_MS;
+    }
+
+    bool done = false;
+    struct epoll_event events[1];
+    msg_t *msg = NULL;
+    while (not done) {
+
+        /* wait for an event or just wait a bit for network data */
+        rc = epoll_wait(epoll_fd, events, 1, timeout);
+        if (rc == -1) {
+            pinerror("epoll_wait failed");
+            perror(ERRPRE "epoll_wait");
+            log(ERROR, "epoll_wait failed");
+            return ERR_INTERNAL;
+        }
+
+        /* data came from network */
+        if (rc == 1 and events[0].data.fd == conf->sockfd) {
+
+            log(DEBUG, "data came from network, todo: call recv");
+            /* todo: call recv, tcp_print */
+
+            /* either block again if stdin is blocking or don't if it's not */
+            if (isatty(0)) continue;
+
+        }  // if data came from network
+
+        /* read one line */
+        ssize_t getlinerc = mgetline(&line, &line_length, stdin);
+        if (getlinerc == -1 and errno == ENOMEM) {
+            pinerror(MEMFAIL_MSG);
+            log(ERROR, MEMFAIL_MSG);
+            return ERR_INTERNAL;
+        }
+        if (getlinerc < 1) {
+            log(INFO, "EOF reached");
+            break;
+        }
+        rstriplf(line);
+        logf(DEBUG, "read %ld characters: '%s' + LF", getlinerc, line);
+
+        if (is_auth(line)) {
+            pinerror("already authenticated");
+            continue;
+
+        } else if (is_join(line)) {
+
+            /* parse /join command */
+            bool error_occurred = false;
+            msg = parse_join(line, &error_occurred);
+
+            /* /join command was invalid */
+            if (msg == NULL and not error_occurred) {
+                pinerror("invalid /join command");
+                continue;
+            }
+
+            /* internal error occured while parsing */
+            if (msg == NULL and error_occurred) {
+                pinerror(MEMFAIL_MSG);
+                continue;
+            }
+
+            msg->dname = conf->dname;
+            rc = tcp_send(conf, msg);
+            msg->dname = NULL;
+            msg_dtor(msg);
+            msg = NULL;
+            if (rc != 0) {
+                pinerror("couldn't send");
+                continue;
+            }
+
+        } else if (is_rename(line)) {
+
+            /* parse /rename command */
+            bool error_occurred = false;
+            char *dname = parse_rename(line, &error_occurred);
+
+            /* couldnt allocate buffer */
+            if (dname == NULL and error_occurred) {
+                fprintf(stderr, ERRPRE MEMFAIL_MSG ERRSUF);
+                log(ERROR, MEMFAIL_MSG);
+                continue;
+            }
+
+            /* invalid display name */
+            if (dname == NULL and not error_occurred) {
+                pinerror("invalid /rename command");
+                continue;
+            }
+
+            /* replace conf->dname */
+            mfree(conf->dname);
+            conf->dname = dname;
+
+            } else if (is_help(line)) {
+            printf(CMD_HELP_TXT);
+
+        /* else: inputted line is a message */
+        } else {
+
+            if (not message_valid(line)) continue;
+
+            msg = msg_ctor();
+            msg->type = MTYPE_MSG;
+            msg->content = line;
+            msg->dname = conf->dname;
+
+            rc = tcp_send(conf, msg);
+            msg->dname = NULL;
+            msg->content = NULL;
+            msg_dtor(msg);
+            msg = NULL;
+            if (rc != 0) {
+                pinerror("couldn't send");
+                continue;
+            }
+
+        }
+
+    }  // while not done
+
+    mfree(line);
+    close(epoll_fd);
+    gexit(GE_UNSET_EPOLLFD, NULL);
+
+    return 0;
+}
+
+static int tcp_auth_loop(conf_t *conf ) {
 
     /* buffer for a line */
     size_t line_length = INIT_LINE_BUFSIZE;
@@ -257,6 +443,8 @@ int tcp_main(conf_t *conf) {
         log(ERROR, "auth process went not well");
         return rc;
     }
+
+    rc = tcp_loop(conf);
 
     close(conf->sockfd);
     conf->sockfd = -1;
