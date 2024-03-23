@@ -22,6 +22,10 @@ VERBOSE = False
 # server display name
 SDNAME = "Server"
 
+# how should the displayname of a client apper if he tried to
+# rename as a server
+ALT_SDNAME = "nice-try"
+
 BIND_IP = "0.0.0.0"
 BIND_PORT = 4567
 FAMILY = socket.AF_INET
@@ -101,6 +105,12 @@ class Message:
             self.secret = match_obj[3]
             self.conn.authenticated = True
 
+            # sanitize also raw data
+            if match_obj[1].lower() == SDNAME.lower():
+                new_raw_data = text.replace(match_obj[1], ALT_SDNAME)
+                new_raw_data = new_raw_data.encode("utf-8")
+                self.raw_data = new_raw_data
+
         # MSG
         elif text.lower().startswith("msg"):
             match_obj = re.match(MSG_PATTERN, text, flags=re.IGNORECASE)
@@ -111,6 +121,12 @@ class Message:
             self.displayname = sanitize_dname(match_obj[1])
             self.conn.dname = sanitize_dname(match_obj[1])
             self.content = sanitize_content(match_obj[2])
+
+            # sanitize also raw data
+            if match_obj[1].lower() == SDNAME.lower():
+                new_raw_data = text.replace(match_obj[1], ALT_SDNAME)
+                new_raw_data = new_raw_data.encode("utf-8")
+                self.raw_data = new_raw_data
 
         # BYE
         elif text.lower().startswith("bye"):
@@ -150,7 +166,7 @@ broad_q: list[Message] = []
 
 
 def sanitize_dname(s: str) -> str:
-    return s if s.lower() != SDNAME.lower() else "nice_try"
+    return s if s.lower() != SDNAME.lower() else ALT_SDNAME
 
 
 def sanitize_content(s: str) -> str:
