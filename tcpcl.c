@@ -161,6 +161,7 @@ int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
  * @return 0 on success else non-zero
 */
 static int tcp_loop(conf_t *conf) {
+    log(DEBUG, "normal loop started");
     int rc = 0;
 
     /* buffer for a line */
@@ -212,6 +213,7 @@ static int tcp_loop(conf_t *conf) {
     bool done = false;
     struct epoll_event events[1];
     msg_t *msg = NULL;
+    bool should_send_bye = true;
     while (not done) {
 
         /* wait for an event or just wait a bit for network data */
@@ -330,14 +332,22 @@ static int tcp_loop(conf_t *conf) {
 
     }  // while not done
 
+    if (should_send_bye) {
+        msg_t bye_msg = { .type = MTYPE_BYE };
+        rc = tcp_send(conf, &bye_msg);
+        if (rc != 0) log(ERROR, "couldn't send bye");
+    }
+
     mfree(line);
     close(epoll_fd);
     gexit(GE_UNSET_EPOLLFD, NULL);
 
-    return 0;
+    log(DEBUG, "normal loop finished");
+    return rc;
 }
 
 static int tcp_auth_loop(conf_t *conf ) {
+    log(DEBUG, "auth loop started");
 
     /* buffer for a line */
     size_t line_length = INIT_LINE_BUFSIZE;
@@ -384,7 +394,6 @@ static int tcp_auth_loop(conf_t *conf ) {
 
         /* wait for REPLY message */
         char *reply_data = tcp_myrecv(conf);
-        logf(DEBUG, "yo server replied: %s", reply_data);
 
         /* parse reply (reply is printed by the parse fn) */
         enum parse_result pr = tcp_parse_any(reply_data);
@@ -411,6 +420,7 @@ static int tcp_auth_loop(conf_t *conf ) {
 
     mfree(line);
     line = NULL;
+    log(DEBUG, "auth loop finished");
     return 0;
 }
 
@@ -419,12 +429,14 @@ int tcp_main(conf_t *conf) {
     int rc = 0;
 
     signal(SIGPIPE, handle_sigpipe);
+    log(DEBUG, "SIGPIPE handler registered");
 
     rc = tcp_create_socket(conf);
     if (rc != 0) {
         return ERR_INTERNAL;
     }
     gexit(GE_SET_FD, &conf->sockfd);
+    log(DEBUG, "socket created");
 
     rc = tcp_connect(conf);
     if (rc != 0) {
@@ -432,6 +444,7 @@ int tcp_main(conf_t *conf) {
         conf->sockfd = -1;
         return ERR_INTERNAL;
     }
+    log(DEBUG, "connected to remote host");
 
     rc = tcp_auth_loop(conf);
     if (rc != 0) {
@@ -439,9 +452,10 @@ int tcp_main(conf_t *conf) {
         return rc;
     }
 
-    rc = tcp_loop(conf);
+    rc = tcp_loop(conf);  // no need to check
 
     close(conf->sockfd);
+    gexit(GE_UNSET_FD, NULL);
     conf->sockfd = -1;
     return rc;
 
