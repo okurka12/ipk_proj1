@@ -32,6 +32,7 @@
 #include "msg.h"
 #include "udp_sender.h"
 #include "udp_confirmer.h"  // udp_cnfm_t
+#include "tcpcl.h"  // tcp_send
 
 extern mtx_t gcl;
 
@@ -214,6 +215,9 @@ void gexit(enum gexit_statement statement, void *p) {
         last_msg.id = LAST_MSGID;
         if (confp != NULL and cnfmdp != NULL) {
             udp_sender_send(&last_msg, confp, cnfmdp);
+        }
+        if (confp != NULL and confp->tp == TCP) {
+            tcp_send(confp, &last_msg);
         }
 
         bool c1 = listener_lock != NULL;
