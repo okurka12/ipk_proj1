@@ -17,7 +17,7 @@ PRINT_RAW = True
 AUTH_SUCCES = True
 
 # print bloat?
-VERBOSE = True
+VERBOSE = False
 
 # server display name
 SDNAME = "Server"
@@ -104,6 +104,9 @@ class Message:
         elif text.lower().startswith("bye"):
             self.type = MTYPE_BYE
             self.conn.set_inactive()
+            self.conn.sock.close()
+            self.conn.sock = None
+            tprint(f"{conn} disconnected.")
 
     def __repr__(self) -> str:
         pre = ""  # prefix
@@ -178,6 +181,35 @@ def process_msg(msg: Message) -> None:
         oknok = "OK" if AUTH_SUCCES else "NOK"
         whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
         msg.conn.sock.sendall(whole_reply.encode("utf-8"))
+        broad_q.append(msg)
+    if msg.type == MTYPE_MSG:
+        broad_q.append(msg)
+
+
+def broadcast_messages() -> None:
+    global connections
+    global broad_q
+
+    for msg in broad_q:
+        for conn in connections:
+
+            # dont send the message to who sent it
+            if msg.type == MTYPE_MSG and conn != msg.conn:
+                vtprint(f"sending MSG to {conn} (user msg)")
+                data_crlf = bytearray(msg.raw_data)
+                if not msg.raw_data.endswith(b"\r\n"):
+                    data_crlf.extend(b"\r\n")
+                conn.sock.sendall(data_crlf)
+
+            if msg.type == MTYPE_AUTH and conn != msg.conn:
+                vtprint(f"sending MSG to {conn} (join broadcast)")
+                text = f"MSG FROM {SDNAME} IS {msg.displayname} joined.\r\n"
+                conn.sock.sendall(text.encode("utf-8"))
+
+def broadcast_bye() -> None:
+    global connections
+    for conn in connections:
+        conn.sock.sendall(b"BYE\r\n")
 
 
 def parse_many(data: bytes, conn: Connection) -> list[Message]:
@@ -256,6 +288,10 @@ def accept_loop() -> None:
         # remove the connections that were disconnected
         clean_connections()
 
+        # broadcast what needs to be broadcasted
+        broadcast_messages()
+        broad_q.clear()
+
         # let cpu rest after all the hard work
         sleep(RL_TIMEO)
 
@@ -264,14 +300,23 @@ def main() -> None:
     try:
         accept_loop()
     except KeyboardInterrupt:
-        print()
+        # this is hard-coded here, run.sh depends on it!
+        with open("server_tcp_end.log", "w", encoding="utf-8") as f:
 
-    tprint(f"closing {len(connections)} connections")
+            f.write("\n")
+            f.write(str(dt.datetime.now()))
+            f.write("\n")
+            f.write(f"closing {len(connections)} connections:\n")
+            f.write(str(connections))
+            f.write("\n")
 
+
+    clean_connections()
+    broadcast_bye()
     for conn in connections:
         conn.sock.close()
 
-    tprint("exiting...")
+    # tprint("exiting...")
 
 if __name__ == "__main__":
     main()
