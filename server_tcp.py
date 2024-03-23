@@ -55,6 +55,8 @@ class Connection:
         self.addr = addr[0]
         self.port = addr[1]
         self.active = True
+        self.dname = ""  # displayname
+        self.authenticated = False
     def __repr__(self) -> str:
         return f"{self.addr}:{self.port}"
     def set_inactive(self) -> None:
@@ -72,6 +74,13 @@ class Message:
         self.type = "unknown"
         self.raw_data = data
         self.conn = conn
+
+        # when somebody sends two BYE messages in a row
+        if conn.sock is None:
+            conn.set_inactive()  # just to be sure
+            vtprint(f"refusing another BYE from {conn}")
+            return
+
         try:
             text = data.decode("utf-8")
         except Exception as e:
@@ -88,7 +97,9 @@ class Message:
             self.type = MTYPE_AUTH
             self.username = match_obj[1]
             self.displayname = sanitize_dname(match_obj[2])
+            self.conn.dname = sanitize_dname(match_obj[2])
             self.secret = match_obj[3]
+            self.conn.authenticated = True
 
         # MSG
         elif text.lower().startswith("msg"):
@@ -98,7 +109,8 @@ class Message:
                 return
             self.type = MTYPE_MSG
             self.displayname = sanitize_dname(match_obj[1])
-            self.content = match_obj[2]
+            self.conn.dname = sanitize_dname(match_obj[1])
+            self.content = sanitize_content(match_obj[2])
 
         # BYE
         elif text.lower().startswith("bye"):
@@ -107,6 +119,7 @@ class Message:
             self.conn.sock.close()
             self.conn.sock = None
             tprint(f"{conn} disconnected.")
+
 
     def __repr__(self) -> str:
         pre = ""  # prefix
@@ -140,6 +153,9 @@ def sanitize_dname(s: str) -> str:
     return s if s.lower() != SDNAME.lower() else "nice_try"
 
 
+def sanitize_content(s: str) -> str:
+    return s.rstrip("\r\n").replace("\n", ".")
+
 
 def print_time(lf=False):
     print(dt.datetime.now(), end="\n" if lf else ": ")
@@ -168,6 +184,12 @@ def print_connections() -> None:
     tprint(f"there are {len(connections)} clients connected: {connections}")
 
 
+def add_disconnect_to_bq(conn: Connection) -> None:
+    global broad_q
+    msg = Message(b"BYE", conn)
+    broad_q.append(msg)
+
+
 def process_msg(msg: Message) -> None:
     """
     process the message, send an individual reply (REPLY) to `sock`
@@ -184,6 +206,8 @@ def process_msg(msg: Message) -> None:
         broad_q.append(msg)
     if msg.type == MTYPE_MSG:
         broad_q.append(msg)
+    if msg.type == MTYPE_BYE:
+        broad_q.append(msg)
 
 
 def broadcast_messages() -> None:
@@ -192,6 +216,9 @@ def broadcast_messages() -> None:
 
     for msg in broad_q:
         for conn in connections:
+
+            if not conn.authenticated:
+                continue
 
             # dont send the message to who sent it
             if msg.type == MTYPE_MSG and conn != msg.conn:
@@ -205,6 +232,13 @@ def broadcast_messages() -> None:
                 vtprint(f"sending MSG to {conn} (join broadcast)")
                 text = f"MSG FROM {SDNAME} IS {msg.displayname} joined.\r\n"
                 conn.sock.sendall(text.encode("utf-8"))
+
+            if msg.type == MTYPE_BYE and conn != msg.conn:
+                vtprint(f"sending MSG to {conn} (disconnect broadcast)")
+                text = f"MSG FROM {SDNAME} IS " \
+                       f"{msg.conn.dname} disconnected.\r\n"
+                conn.sock.sendall(text.encode("utf-8"))
+
 
 def broadcast_bye() -> None:
     global connections
@@ -238,10 +272,13 @@ def try_recv(conn: Connection):
             if (len(data) == 0):
                 conn.set_inactive()
                 tprint(f"{conn} disconnected")
+                add_disconnect_to_bq(conn)
                 return
         except ConnectionResetError:  # recv
             tprint(f"ConnectionResetError with {conn}")
             conn.set_inactive()
+            add_disconnect_to_bq(conn)
+            return
 
         # parse the data
         vtprint(f"{len(data)} B from {conn}:")
