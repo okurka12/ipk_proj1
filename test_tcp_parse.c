@@ -1,3 +1,20 @@
+/*****************
+**  Vit Pavlik  **
+**   xpavli0a   **
+**    251301    **
+**              **
+**   Created:   **
+**  2024-03-23  **
+**              **
+**    Edited:   **
+**  2024-03-23  **
+*****************/
+
+/**
+ * test IPK24CHAT TCP strings for the parse result (enum parse_result)
+ * in tcp_parse.c
+*/
+
 #include <assert.h>
 #include "tcp_parse.h"
 

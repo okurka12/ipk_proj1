@@ -116,5 +116,10 @@ test_argparse.bin: test_argparse.c argparse.h argparse.o
 test_sockopen.bin: test_sockopen.c utils.h
 	$(CC) $(CFLAGS) -o $@ $<
 
-test:
+# -Wno-unused-value for comma operator in assert
+test_tcp_parse.bin: test_tcp_parse.c tcp_parse.o
+	$(CC) $(CFLAGS) -Wno-unused-value -o $@ $< tcp_parse.o
+
+test: test_argparse.bin test_tcp_parse.bin
 	./test.sh
+	@echo "Additionally, run ./test_tcp_parse.bin"

@@ -1,3 +1,17 @@
+##################
+##  Vit Pavlik  ##
+##   xpavli0a   ##
+##    251301    ##
+##              ##
+##  Created:    ##
+##  2024-02-23  ##
+##              ##
+##  Edited:     ##
+##  2024-03-23  ##
+##################
+
+# tests valid combinations of arguments
+
 RED='\033[0;31m'
 COLOR_RESET='\033[0m'
 
@@ -6,13 +20,13 @@ echo_ok () {
 }
 
 echo_err () {
-    echo -e "$RED$@$RESET"
+    echo -e "$RED$@$COLOR_RESET"
 }
 
 test_arg () {
     ./test_argparse.bin $@ > /dev/null 2> /dev/null
-    RESULT=$?
-    if [ $RESULT == $EXPECTED ]; then
+    RESULT="$?"
+    if [ "$RESULT" = "$EXPECTED" ]; then
         echo_ok "OK: '$@'"
     else
         echo_err "ERR: '$@' (expected $EXPECTED got $RESULT)"
@@ -20,7 +34,6 @@ test_arg () {
 }
 
 # -t tcp|udp -s ADDRESS [-p PORT] [-d TIMEOUT] [-r RETRIES] [-h]
-make test_argparse.bin
 EXPECTED=0
 test_arg -s localhost -t udp
 test_arg -s vitapavlik.cz -t tcp
