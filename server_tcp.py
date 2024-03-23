@@ -17,7 +17,10 @@ PRINT_RAW = True
 AUTH_SUCCES = True
 
 # print bloat?
-VERBOSE = False
+VERBOSE = True
+
+# server display name
+SDNAME = "Server"
 
 BIND_IP = "0.0.0.0"
 BIND_PORT = 4567
@@ -25,18 +28,23 @@ FAMILY = socket.AF_INET
 SOCKTYPE = socket.SOCK_STREAM
 
 MTYPE_AUTH = "AUTH"
+MTYPE_MSG = "MSG"
+MTYPE_BYE = "BYE"
 
 RE_USERNAME = r"((?:[A-z]|[0-9]|-){1,20})"
 RE_DISPLAYNAME = r"([!-~]{1,20})"
 RE_SECRET = r"((?:[A-z]|[0-9]|-){1,128})"
+RE_CONTENT = r"([ -~]{1,1400})"
 
 AUTH_PATTERN = r"AUTH " + RE_USERNAME + r" AS " + RE_DISPLAYNAME  + \
 r" USING " + RE_SECRET
 
+MSG_PATTERN = r"MSG FROM " + RE_DISPLAYNAME + r" IS " + RE_CONTENT
+
 # timeout for the recv loop
 # recommended: 0.2 if human uses client, else something lowe
-RL_TIMEO = 0.2
-# RL_TIMEO = 0.05
+# RL_TIMEO = 0.2
+RL_TIMEO = 0.05
 
 
 class Connection:
@@ -70,6 +78,7 @@ class Message:
             tprint(f"{conn} sent weird data: {data} it resulted in {e}")
             text = ""
 
+        # AUTH
         if text.lower().startswith("auth"):
             match_obj = re.match(AUTH_PATTERN, text, flags=re.IGNORECASE)
             if match_obj is None:
@@ -78,8 +87,23 @@ class Message:
                 return
             self.type = MTYPE_AUTH
             self.username = match_obj[1]
-            self.displayname = match_obj[2]
+            self.displayname = sanitize_dname(match_obj[2])
             self.secret = match_obj[3]
+
+        # MSG
+        elif text.lower().startswith("msg"):
+            match_obj = re.match(MSG_PATTERN, text, flags=re.IGNORECASE)
+            if match_obj is None:
+                tprint(f"couldn't parse '{text}' as MSG")
+                return
+            self.type = MTYPE_MSG
+            self.displayname = sanitize_dname(match_obj[1])
+            self.content = match_obj[2]
+
+        # BYE
+        elif text.lower().startswith("bye"):
+            self.type = MTYPE_BYE
+            self.conn.set_inactive()
 
     def __repr__(self) -> str:
         pre = ""  # prefix
@@ -93,6 +117,8 @@ class Message:
             output += f"Display Name: {self.displayname}" + delim
         if self.secret is not None:
             output += f"Secret: {self.secret}" + delim
+        if self.content is not None:
+            output += f"Content: '{self.content}'"
 
         return output + suf
 
@@ -102,6 +128,14 @@ class Message:
 
 
 connections: Set[Connection] = set()
+
+# broadcast queue
+broad_q: list[Message] = []
+
+
+def sanitize_dname(s: str) -> str:
+    return s if s.lower() != SDNAME.lower() else "nice_try"
+
 
 
 def print_time(lf=False):
