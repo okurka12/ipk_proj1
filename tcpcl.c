@@ -229,7 +229,21 @@ static int tcp_loop(conf_t *conf) {
         if (rc == 1 and events[0].data.fd == conf->sockfd) {
 
             log(DEBUG, "data came from network, todo: call recv");
-            /* todo: call recv, tcp_print */
+            char *reply_data = tcp_myrecv(conf);
+            if (reply_data == NULL) {
+                pinerror("something went wrong");
+                log(ERROR, "something went wront with recv");
+                return ERR_INTERNAL;
+            }
+
+            enum parse_result pr = PR_UNKNOWN;
+            pr = tcp_parse_any(reply_data);
+            if (pr == PR_BYE) {
+                should_send_bye = false;
+                break;
+            } else if (pr == PR_UNKNOWN) {
+                pinerror("server sent invalid data");
+            }
 
             /* either block again if stdin is blocking or don't if it's not */
             if (isatty(0)) continue;
