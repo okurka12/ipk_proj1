@@ -211,6 +211,8 @@ def process_msg(msg: Message) -> None:
     process the message, send an individual reply (REPLY) to `sock`
     todo: send MSGs to all?
     """
+
+    # send REPLY to AUTH
     if msg.type == MTYPE_AUTH:
         vtprint(f"Sending REPLY with success={AUTH_SUCCES} to {msg.conn}")
         succ = "Successfully authenticated" if AUTH_SUCCES \
@@ -218,10 +220,29 @@ def process_msg(msg: Message) -> None:
         reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}"
         oknok = "OK" if AUTH_SUCCES else "NOK"
         whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
-        msg.conn.sock.sendall(whole_reply.encode("utf-8"))
+        if msg.conn.sock is not None:  # this if originally wasn't here
+            msg.conn.sock.sendall(whole_reply.encode("utf-8"))
+        else:
+            tprint(f"weird, socket for {msg.conn} is none? (1)")
         broad_q.append(msg)
-    if msg.type == MTYPE_MSG:
+
+    # add MSG message to the broadcast queue
+    if msg.type == MTYPE_MSG and "list-users" not in msg.content:
         broad_q.append(msg)
+
+    # send list of users to the individual client
+    if msg.type == MTYPE_MSG and "list-users" in msg.content:
+        reply_text = f"MSG FROM {SDNAME} IS There are {len(connections)} " \
+                     f"clients connected: "
+        reply_text += ", ".join([conn.dname for conn in connections])
+        reply_text += "\r\n"
+        if msg.conn.sock is not None:
+            msg.conn.sock.sendall(reply_text.encode("utf-8"))
+        else:
+            tprint(f"weird, socket for {msg.conn} is none? (2)")
+
+    # add BYE message to the broadcast queue
+    # (this results in the "dname disconnected" message)
     if msg.type == MTYPE_BYE:
         broad_q.append(msg)
 
@@ -249,7 +270,8 @@ def broadcast_messages() -> None:
                 text = f"MSG FROM {SDNAME} IS {msg.displayname} joined.\r\n"
                 conn.sock.sendall(text.encode("utf-8"))
 
-            if msg.type == MTYPE_BYE and conn != msg.conn:
+            len_nonzero = len(msg.conn.dname) > 0
+            if msg.type == MTYPE_BYE and conn != msg.conn and len_nonzero:
                 vtprint(f"sending MSG to {conn} (disconnect broadcast)")
                 text = f"MSG FROM {SDNAME} IS " \
                        f"{msg.conn.dname} disconnected.\r\n"
