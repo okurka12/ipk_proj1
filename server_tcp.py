@@ -306,7 +306,7 @@ def try_recv(conn: Connection):
     try:  # except BlockingIOError
 
         try:  # except ConnectionResetError
-            data = conn.sock.recv(65536)  # todo: handle
+            data = conn.sock.recv(65536)
             if (len(data) == 0):
                 conn.set_inactive()
                 tprint(f"{conn} disconnected")
@@ -314,6 +314,11 @@ def try_recv(conn: Connection):
                 return
         except ConnectionResetError:  # recv
             tprint(f"ConnectionResetError with {conn}")
+            conn.set_inactive()
+            add_disconnect_to_bq(conn)
+            return
+        except TimeoutError:  # recv
+            tprint(f"TimeoutError with {conn}")
             conn.set_inactive()
             add_disconnect_to_bq(conn)
             return
