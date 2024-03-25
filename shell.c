@@ -41,6 +41,8 @@
  *
 */
 
+#define _XOPEN_SOURCE  // isascii
+
 #include <assert.h>
 #include <stdio.h>  // stdin
 #include <string.h>  // strlen
@@ -85,6 +87,63 @@ bool startswith(const char *s, const char *prefix) {
     return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
+/**
+ * checks that `f` is true for all the characters in a string
+*/
+static bool shell_str_all(const char *str, bool f(const char)) {
+    unsigned int i = 0;
+    while (str[i] != '\0') {
+        char c = str[i];
+        if (not f(c)) return false;
+        i++;
+    }
+    return true;
+}
+
+/**
+ * checks if `c` is ascii alphanumeric or dash (`-`)
+*/
+static bool shell_isalnum_dash(char c) {
+    if (not isascii(c)) return false;
+    return isalnum(c) or c == '-';
+}
+
+/**
+ * checks if `c` is a visible printable character
+*/
+static bool shell_isvchar(char c) {
+    return 0x21 <= c and c <= 0x7e;
+}
+
+/**
+ * checks if display name consists of valid characters
+ * @note doesnt check display name length
+*/
+static bool check_uname(const char *str) {
+    return shell_str_all(str, shell_isalnum_dash);
+}
+
+/**
+ * same as `check_uname` but for secret
+*/
+static bool check_secret(const char *str) {
+    return shell_str_all(str, shell_isalnum_dash);
+}
+
+/**
+ * same as `check_uname` but for display name
+*/
+static bool check_dname(const char *str) {
+    return shell_str_all(str, shell_isvchar);
+}
+
+/**
+ * same as `check_uname` but for channel id
+*/
+static bool check_chid(const char *str) {
+    return shell_str_all(str, shell_isalnum_dash);
+}
+
 msg_t *parse_auth(const char *line, bool *error_occured) {
     check_constants();
     int rc = 1;
@@ -125,14 +184,13 @@ msg_t *parse_auth(const char *line, bool *error_occured) {
         return NULL;
     }
 
-    /* check printability of the stuff */
-    /* todo: displayname can be printable characters, but the other fields only A-z0-9- */
-    bool uname_printable = str_isprint(username);
-    bool secret_printable = str_isprint(secret);
-    bool dname_printable = str_isprint(dname);
-    if (not uname_printable or not secret_printable or not dname_printable) {
-        fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
-        log(WARNING, "non printable characters");
+    /* check characters of the stuff */
+    bool uname_valid = check_uname(username);
+    bool secret_valid = check_secret(secret);
+    bool dname_valid = check_dname(dname);
+    if (not uname_valid or not secret_valid or not dname_valid) {
+        fprintf(stderr, ERRPRE "invalid characters" ERRSUF);
+        log(WARNING, "invalid characters");
         mfree(username); mfree(secret); mfree(dname);
         *error_occured = false;
         return NULL;
@@ -166,7 +224,7 @@ msg_t *parse_join(const char *line, bool *error_occured) {
 
     /* scan chid */
     int rc = sscanf(line, "/join " LLS, chid);
-    if (rc != 1 or strlen(chid) > MAX_CHID_LEN or not str_isprint(chid)) {
+    if (rc != 1 or strlen(chid) > MAX_CHID_LEN or not check_chid(chid)) {
         mfree(chid);
         *error_occured = false;
         return NULL;
@@ -195,7 +253,7 @@ char *parse_rename(char *line, bool *error_occurred) {
         return NULL;
     }
     int rc = sscanf(line, "/rename " LLS, dname);
-    if (rc != 1 or strlen (dname) > MAX_DNAME_LEN or not str_isprint(dname)) {
+    if (rc != 1 or strlen (dname) > MAX_DNAME_LEN or not check_dname(dname)) {
         mfree(dname);
         *error_occurred = false;
         return NULL;
