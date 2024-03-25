@@ -116,6 +116,14 @@ static bool shell_isvchar(char c) {
 }
 
 /**
+ * checks if `c` is a visible printable character or space
+*/
+static bool shell_isvcharsp(char c) {
+    return 0x20 <= c and c <= 0x7e;
+}
+
+
+/**
  * checks if display name consists of valid characters
  * @note doesnt check display name length
 */
@@ -135,6 +143,13 @@ static bool check_secret(const char *str) {
 */
 static bool check_dname(const char *str) {
     return shell_str_all(str, shell_isvchar);
+}
+
+/**
+ * same as `check_uname` but for content
+*/
+static bool check_content(const char *str) {
+    return shell_str_all(str, shell_isvcharsp);
 }
 
 /**
@@ -297,7 +312,7 @@ bool message_valid(const char *line) {
     }
 
     /* don't send non-printable characters */
-    if (not str_isprint(line)) {
+    if (not check_content(line)) {
         fprintf(stderr, ERRPRE "non-printable characters" ERRSUF);
         log(WARNING, "bad characters, not sending");
         return false;
