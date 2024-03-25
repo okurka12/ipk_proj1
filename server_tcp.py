@@ -62,9 +62,23 @@ class Connection:
         self.dname = ""  # displayname
         self.authenticated = False
     def __repr__(self) -> str:
-        return f"{self.addr}:{self.port}"
+        return f"{self.addr}:{self.port} (dname: {self.dname})"
     def set_inactive(self) -> None:
+        if not self.active:
+            return
+        tprint(f"{self} disconnected.")
+        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
         self.active = False
+        self.sock = None
+    def send(self, data: bytes) -> None:
+        """sends `data` to connection, but only if its active"""
+        if not self.active:
+            return
+        if self.sock is not None:
+            self.sock.sendall(data)
+        else:
+            tprint(f"Very weird, {self} socket is None")
 
 
 class Message:
@@ -79,10 +93,8 @@ class Message:
         self.raw_data = data
         self.conn = conn
 
-        # when somebody sends two BYE messages in a row
-        if conn.sock is None:
-            conn.set_inactive()  # just to be sure
-            vtprint(f"refusing another BYE from {conn}")
+        # for situations like when someone sends two BYEs
+        if not conn.active:
             return
 
         try:
@@ -132,9 +144,8 @@ class Message:
         elif text.lower().startswith("bye"):
             self.type = MTYPE_BYE
             self.conn.set_inactive()
-            self.conn.sock.close()
-            self.conn.sock = None
-            tprint(f"{conn} disconnected.")
+            # self.conn.sock.close()  # i will implement it in set_inactive
+            # self.conn.sock = None
 
 
     def __repr__(self) -> str:
@@ -221,7 +232,7 @@ def process_msg(msg: Message) -> None:
         oknok = "OK" if AUTH_SUCCES else "NOK"
         whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
         if msg.conn.sock is not None:  # this if originally wasn't here
-            msg.conn.sock.sendall(whole_reply.encode("utf-8"))
+            msg.conn.send(whole_reply.encode("utf-8"))
         else:
             tprint(f"weird, socket for {msg.conn} is none? (1)")
         broad_q.append(msg)
@@ -237,12 +248,12 @@ def process_msg(msg: Message) -> None:
         reply_text += ", ".join([conn.dname for conn in connections])
         reply_text += "\r\n"
         if msg.conn.sock is not None:
-            msg.conn.sock.sendall(reply_text.encode("utf-8"))
+            msg.conn.send(reply_text.encode("utf-8"))
         else:
             tprint(f"weird, socket for {msg.conn} is none? (2)")
 
     # add BYE message to the broadcast queue
-    # (this results in the "dname disconnected" message)
+    # (this results in the "dname disconnected" message to clients)
     if msg.type == MTYPE_BYE:
         broad_q.append(msg)
 
@@ -263,25 +274,25 @@ def broadcast_messages() -> None:
                 data_crlf = bytearray(msg.raw_data)
                 if not msg.raw_data.endswith(b"\r\n"):
                     data_crlf.extend(b"\r\n")
-                conn.sock.sendall(data_crlf)
+                conn.send(data_crlf)
 
             if msg.type == MTYPE_AUTH and conn != msg.conn:
                 vtprint(f"sending MSG to {conn} (join broadcast)")
                 text = f"MSG FROM {SDNAME} IS {msg.displayname} joined.\r\n"
-                conn.sock.sendall(text.encode("utf-8"))
+                conn.send(text.encode("utf-8"))
 
             len_nonzero = len(msg.conn.dname) > 0
             if msg.type == MTYPE_BYE and conn != msg.conn and len_nonzero:
                 vtprint(f"sending MSG to {conn} (disconnect broadcast)")
                 text = f"MSG FROM {SDNAME} IS " \
                        f"{msg.conn.dname} disconnected.\r\n"
-                conn.sock.sendall(text.encode("utf-8"))
+                conn.send(text.encode("utf-8"))
 
 
 def broadcast_bye() -> None:
     global connections
     for conn in connections:
-        conn.sock.sendall(b"BYE\r\n")
+        conn.send(b"BYE\r\n")
 
 
 def parse_many(data: bytes, conn: Connection) -> list[Message]:
@@ -309,7 +320,6 @@ def try_recv(conn: Connection):
             data = conn.sock.recv(65536)
             if (len(data) == 0):
                 conn.set_inactive()
-                tprint(f"{conn} disconnected")
                 add_disconnect_to_bq(conn)
                 return
         except ConnectionResetError:  # recv
@@ -393,9 +403,15 @@ def main() -> None:
 
     clean_connections()
     broadcast_bye()
-    for conn in connections:
-        conn.sock.close()
 
+    # ideally, clients close the connection first upon receiving
+    # BYE, so give them time to do that (not sure about this tho)
+    sleep(0.1)
+
+    for conn in connections:
+        conn.set_inactive()  # this will close the socket
+
+    # dont use this, avoid sigpipe when piping to `tee` :)
     # tprint("exiting...")
 
 if __name__ == "__main__":
