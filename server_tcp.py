@@ -45,6 +45,8 @@ r" USING " + RE_SECRET
 
 MSG_PATTERN = r"MSG FROM " + RE_DISPLAYNAME + r" IS " + RE_CONTENT
 
+JOIN_PATTERN = r"JOIN " + RE_USERNAME + r" AS " + RE_DISPLAYNAME
+
 # timeout for the recv loop
 # recommended: 0.2 if human uses client, else something lowe
 # RL_TIMEO = 0.2
@@ -79,6 +81,13 @@ class Connection:
             self.sock.sendall(data)
         else:
             tprint(f"Very weird, {self} socket is None")
+    def send_err(self, text: str, dname: str=SDNAME) -> None:
+        """like `Connection.send`, but for err messages"""
+        text_shortened = text[:1300]
+        text_data = f"ERR FROM {dname} IS {text_shortened}\r\n"
+        bin_data = text_data.encode("utf-8")
+        self.send(bin_data)
+
 
 
 class Message:
@@ -105,10 +114,11 @@ class Message:
 
         # AUTH
         if text.lower().startswith("auth"):
-            match_obj = re.match(AUTH_PATTERN, text, flags=re.IGNORECASE)
+            match_obj = re.fullmatch(AUTH_PATTERN, text, flags=re.IGNORECASE)
             if match_obj is None:
-                # todo: send err?
-                tprint(f"couldn't parse '{text}' as AUTH")
+                err_text = f"couldn't parse as AUTH: {data.__repr__()}"
+                tprint(err_text)
+                self.conn.send_err(err_text)
                 return
             self.type = MTYPE_AUTH
             self.username = match_obj[1]
@@ -125,9 +135,11 @@ class Message:
 
         # MSG
         elif text.lower().startswith("msg"):
-            match_obj = re.match(MSG_PATTERN, text, flags=re.IGNORECASE)
+            match_obj = re.fullmatch(MSG_PATTERN, text, flags=re.IGNORECASE)
             if match_obj is None:
-                tprint(f"couldn't parse '{text}' as MSG")
+                err_text = f"couldn't parse as MSG: {data.__repr__()}"
+                tprint(err_text)
+                self.conn.send_err(err_text)
                 return
             self.type = MTYPE_MSG
             self.displayname = sanitize_dname(match_obj[1])
@@ -144,8 +156,6 @@ class Message:
         elif text.lower().startswith("bye"):
             self.type = MTYPE_BYE
             self.conn.set_inactive()
-            # self.conn.sock.close()  # i will implement it in set_inactive
-            # self.conn.sock = None
 
 
     def __repr__(self) -> str:
