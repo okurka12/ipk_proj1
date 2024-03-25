@@ -74,7 +74,10 @@ class Connection:
         if not self.active:
             return
         tprint(f"{self} disconnected.")
-        self.sock.shutdown(socket.SHUT_RDWR)
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError as e:
+            tprint(f"OSError when calling shutdown: {e}")
         self.sock.close()
         self.active = False
         self.sock = None
