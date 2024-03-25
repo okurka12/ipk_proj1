@@ -468,6 +468,7 @@ int tcp_main(conf_t *conf) {
 
     rc = tcp_loop(conf);  // no need to check
 
+    shutdown(conf->sockfd, SHUT_RDWR);
     close(conf->sockfd);
     gexit(GE_UNSET_FD, NULL);
     conf->sockfd = -1;

@@ -25,6 +25,7 @@
 #include <stdlib.h>  // free
 #include <stdbool.h>
 #include <threads.h>  // thrd_join, mtx_unlock...
+#include <sys/socket.h>  // shutdown
 
 #include "ipk24chat.h"
 #include "gexit.h"
@@ -217,7 +218,8 @@ void gexit(enum gexit_statement statement, void *p) {
             udp_sender_send(&last_msg, confp, cnfmdp);
         }
         if (confp != NULL and confp->tp == TCP) {
-            tcp_send(confp, &last_msg);
+            tcp_send(confp, &last_msg);  // success or not? idc, i tried...
+            shutdown(sockfd, SHUT_RDWR);
         }
 
         bool c1 = listener_lock != NULL;
