@@ -169,6 +169,16 @@ class Message:
                 new_raw_data = new_raw_data.encode("utf-8")
                 self.raw_data = new_raw_data
 
+        # ERR
+        elif text.lower().startswith("err"):
+            self.conn.send_err("I don't care about your ERR :) ")
+            return
+
+        # REPLY (reply from client???)
+        elif text.lower().startswith("reply"):
+            self.conn.send_err("tf, are you sending me REPLY as a client?")
+            return
+
         # BYE
         elif text.lower().startswith("bye"):
             self.type = MTYPE_BYE
