@@ -66,7 +66,10 @@ class Connection:
         self.dname = ""  # displayname
         self.authenticated = False
     def __repr__(self) -> str:
-        return f"{self.addr}:{self.port} (dname: {self.dname})"
+        if len(self.dname) > 0:
+            return f"{self.addr}:{self.port} (dname: {self.dname})"
+        else:
+            return f"{self.addr}:{self.port}"
     def set_inactive(self) -> None:
         if not self.active:
             return
@@ -157,6 +160,11 @@ class Message:
                 err_text = f"couldn't parse as MSG: {data.__repr__()}"
                 tprint(err_text)
                 self.conn.send_err(err_text)
+                return
+            if match_obj[2].isspace():
+                self.conn.send_err("Messages consisting of all spaces are "
+                                   "valid regarding IPK24CHAT protocol, but "
+                                   "I'm refusing them.")
                 return
             self.type = MTYPE_MSG
             self.displayname = sanitize_dname(match_obj[1])
