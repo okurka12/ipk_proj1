@@ -34,8 +34,10 @@ SOCKTYPE = socket.SOCK_STREAM
 MTYPE_AUTH = "AUTH"
 MTYPE_MSG = "MSG"
 MTYPE_BYE = "BYE"
+MTYPE_JOIN = "JOIN"
 
 RE_USERNAME = r"((?:[A-Z]|[a-z]|[0-9]|-){1,20})"
+RE_CHID = RE_USERNAME  # they're the same
 RE_DISPLAYNAME = r"([!-~]{1,20})"
 RE_SECRET = r"((?:[A-z]|[0-9]|-){1,128})"
 RE_CONTENT = r"([ -~]{1,1400})"
@@ -45,7 +47,7 @@ r" USING " + RE_SECRET
 
 MSG_PATTERN = r"MSG FROM " + RE_DISPLAYNAME + r" IS " + RE_CONTENT
 
-JOIN_PATTERN = r"JOIN " + RE_USERNAME + r" AS " + RE_DISPLAYNAME
+JOIN_PATTERN = r"JOIN " + RE_CHID + r" AS " + RE_DISPLAYNAME
 
 # timeout for the recv loop
 # recommended: 0.2 if human uses client, else something lowe
@@ -134,6 +136,19 @@ class Message:
                 new_raw_data = text.replace(match_obj[1], ALT_SDNAME)
                 new_raw_data = new_raw_data.encode("utf-8")
                 self.raw_data = new_raw_data
+
+        # JOIN
+        elif text.lower().startswith("join"):
+            match_obj = re.fullmatch(JOIN_PATTERN, text, flags=re.IGNORECASE)
+            if match_obj is None:
+                err_text = f"couldn't parse as JOIN: {data.__repr__()}"
+                tprint(err_text)
+                self.conn.send_err(err_text)
+                return
+            self.type = MTYPE_JOIN
+            self.displayname = sanitize_dname(match_obj[2])
+            self.conn.dname = sanitize_dname(match_obj[2])
+            # JOIN is not broadcasted, no need to sanitize the raw_content
 
         # MSG
         elif text.lower().startswith("msg"):
@@ -251,11 +266,15 @@ def process_msg(msg: Message) -> None:
         reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}"
         oknok = "OK" if AUTH_SUCCES else "NOK"
         whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
-        if msg.conn.sock is not None:  # this if originally wasn't here
-            msg.conn.send(whole_reply.encode("utf-8"))
-        else:
-            tprint(f"weird, socket for {msg.conn} is none? (1)")
+        msg.conn.send(whole_reply.encode("utf-8"))
         broad_q.append(msg)
+
+    # send REPLY to JOIN
+    if msg.type == MTYPE_JOIN:
+        reply_text = f"Hi, {msg.conn.dname}! Successfully joined you " \
+                     f"NOWHERE! This server has only one channel."
+        whole_reply = f"REPLY OK IS {reply_text}\r\n"
+        msg.conn.send(whole_reply.encode("utf-8"))
 
     # add MSG message to the broadcast queue
     if msg.type == MTYPE_MSG and "list-users" not in msg.content:
