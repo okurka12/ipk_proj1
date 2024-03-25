@@ -35,7 +35,7 @@ MTYPE_AUTH = "AUTH"
 MTYPE_MSG = "MSG"
 MTYPE_BYE = "BYE"
 
-RE_USERNAME = r"((?:[A-z]|[0-9]|-){1,20})"
+RE_USERNAME = r"((?:[A-Z]|[a-z]|[0-9]|-){1,20})"
 RE_DISPLAYNAME = r"([!-~]{1,20})"
 RE_SECRET = r"((?:[A-z]|[0-9]|-){1,128})"
 RE_CONTENT = r"([ -~]{1,1400})"
@@ -84,7 +84,7 @@ class Connection:
     def send_err(self, text: str, dname: str=SDNAME) -> None:
         """like `Connection.send`, but for err messages"""
         text_shortened = text[:1300]
-        text_data = f"ERR FROM {dname} IS {text_shortened}\r\n"
+        text_data = f"ERR FROM {dname} IS {text_shortened}...\r\n"
         bin_data = text_data.encode("utf-8")
         self.send(bin_data)
 
@@ -107,10 +107,12 @@ class Message:
             return
 
         try:
-            text = data.decode("utf-8")
+            text = data.decode("ascii")
         except Exception as e:
             tprint(f"{conn} sent weird data: {data} it resulted in {e}")
-            text = ""
+            err_text = f"you sent weird bytes: {data.__repr__()}"
+            self.conn.send_err(err_text)
+            return
 
         # AUTH
         if text.lower().startswith("auth"):
@@ -156,6 +158,14 @@ class Message:
         elif text.lower().startswith("bye"):
             self.type = MTYPE_BYE
             self.conn.set_inactive()
+
+        # message couldnt be parsed as anything
+        if self.type == "unknown":
+            err_text = f"couldn't parse message: {data.__repr__()}"
+            tprint(err_text)
+            self.conn.send_err(err_text)
+            return
+
 
 
     def __repr__(self) -> str:
