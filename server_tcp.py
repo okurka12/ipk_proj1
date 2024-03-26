@@ -81,19 +81,18 @@ class Connection:
             broadcast_disconnect(self.dname)
     def send(self, data: bytes) -> None:
         """sends `data` to connection, but only if its active"""
-        if not self.active:
+        if not self.active or self.sock is None:
             return
-        if self.sock is not None:
-            try:
-                self.sock.sendall(data)
-            except BrokenPipeError as e:
-                tprint(f"Connection.send: BrokenPipeError with {self}: {e}")
-            except ConnectionResetError as e:
-                tprint(f"Connection.send: ConnectionResetError "
-                       f"with {self}: {e}")
+        try:
+            self.sock.sendall(data)
+        except BrokenPipeError as e:
+            tprint(f"Connection.send: BrokenPipeError with {self}: {e}")
+        except ConnectionResetError as e:
+            tprint(f"Connection.send: ConnectionResetError "
+                    f"with {self}: {e}")
+        except BlockingIOError as e:
+            tprint(f"Connection.send: BlockingIOError with {self}: {e}")
 
-        else:
-            tprint(f"Very weird, {self} socket is None")
     def send_err(self, text: str, dname: str=SDNAME) -> None:
         """like `Connection.send`, but for err messages"""
         text_shortened = text[:1300]
