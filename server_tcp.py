@@ -73,10 +73,10 @@ class Connection:
     def set_inactive(self) -> None:
         if not self.active:
             return
-        tprint(f"{self} disconnected.")
-        self.sock.close()
         self.active = False
+        self.sock.close()
         self.sock = None
+        tprint(f"{self} disconnected.")
         if len(self.dname) > 0:
             broadcast_disconnect(self.dname)
     def send(self, data: bytes) -> None:
