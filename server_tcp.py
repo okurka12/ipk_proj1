@@ -16,6 +16,9 @@ PRINT_RAW = True
 # send successful REPLY replies to the AUTH messages
 AUTH_SUCCES = True
 
+# when someone renames, broadcast it to all? (except him)
+BROADCAST_RENAME = True
+
 # print bloat?
 VERBOSE = False
 
@@ -87,9 +90,13 @@ class Connection:
             self.sock.sendall(data)
         except BrokenPipeError as e:
             tprint(f"Connection.send: BrokenPipeError with {self}: {e}")
+            self.set_inactive()
+            return
         except ConnectionResetError as e:
             tprint(f"Connection.send: ConnectionResetError "
                     f"with {self}: {e}")
+            self.set_inactive()
+            return
         except BlockingIOError as e:
             tprint(f"Connection.send: BlockingIOError with {self}: {e}")
 
@@ -100,6 +107,22 @@ class Connection:
         bin_data = text_data.encode("ascii")
         self.send(bin_data)
 
+    def set_dname(self, new_dname: str) -> None:
+        """
+        set display name, do nothing if `new_dname` is the same,
+        if its the new dname is different and current dname was non-empty,
+        broadcast the rename
+        """
+        if self.dname == new_dname:
+            return
+        if self.dname == "":
+            self.dname = new_dname
+            return
+        old_dname = self.dname
+        self.dname = new_dname
+        tprint(f"{old_dname} renamed to {new_dname}")
+        if BROADCAST_RENAME:
+            broadcast_rename(old_dname, new_dname, self)
 
 
 class Message:
@@ -137,7 +160,7 @@ class Message:
             self.type = MTYPE_AUTH
             self.username = match_obj[1]
             self.displayname = sanitize_dname(match_obj[2])
-            self.conn.dname = sanitize_dname(match_obj[2])
+            self.conn.set_dname(sanitize_dname(match_obj[2]))
             self.secret = match_obj[3]
             self.conn.authenticated = True
 
@@ -157,7 +180,7 @@ class Message:
                 return
             self.type = MTYPE_JOIN
             self.displayname = sanitize_dname(match_obj[2])
-            self.conn.dname = sanitize_dname(match_obj[2])
+            self.conn.set_dname(sanitize_dname(match_obj[2]))
             # JOIN is not broadcasted, no need to sanitize the raw_content
 
         # MSG
@@ -175,7 +198,7 @@ class Message:
                 return
             self.type = MTYPE_MSG
             self.displayname = sanitize_dname(match_obj[1])
-            self.conn.dname = sanitize_dname(match_obj[1])
+            self.conn.set_dname(sanitize_dname(match_obj[1]))
             self.content = sanitize_content(match_obj[2])
 
             # sanitize also raw data
@@ -336,9 +359,18 @@ def broadcast_messages() -> None:
 
 def broadcast_disconnect(dname: str|Connection) -> None:
     global connections
+    text = f"MSG FROM {SDNAME} IS {dname} disconnected.\r\n"
     for conn in connections:
-        text = f"MSG FROM {SDNAME} IS {dname} disconnected.\r\n"
         conn.send(text.encode("ascii"))
+
+
+def broadcast_rename(old_name: str, new_name: str, who: Connection) -> None:
+    global connections
+    brmsg = f"MSG FROM {SDNAME} IS {old_name} renamed to {new_name}\r\n"
+    for conn in connections:
+        if conn == who:
+            continue
+        conn.send(brmsg.encode("ascii"))
 
 
 def broadcast_bye() -> None:
