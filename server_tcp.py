@@ -100,6 +100,14 @@ class Connection:
         except BlockingIOError as e:
             tprint(f"Connection.send: BlockingIOError with {self}: {e}")
 
+    def asend(self, data: bytes) -> None:
+        """
+        like `Connection.send`, but send only if connection is
+        authenticated
+        """
+        if self.authenticated:
+            self.send(data)
+
     def send_err(self, text: str, dname: str=SDNAME) -> None:
         """like `Connection.send`, but for err messages"""
         text_shortened = text[:1300]
@@ -316,7 +324,7 @@ def process_msg(msg: Message) -> None:
         reply_text = f"Hi, {msg.conn.dname}! Successfully joined you " \
                      f"NOWHERE! This server has only one channel."
         whole_reply = f"REPLY OK IS {reply_text}\r\n"
-        msg.conn.send(whole_reply.encode("ascii"))
+        msg.conn.asend(whole_reply.encode("ascii"))
 
     # add MSG message to the broadcast queue
     if msg.type == MTYPE_MSG and "list-users" not in msg.content:
@@ -330,7 +338,7 @@ def process_msg(msg: Message) -> None:
             [conn.dname for conn in connections if conn.active]
         )
         reply_text += "\r\n"
-        msg.conn.send(reply_text.encode("ascii"))
+        msg.conn.asend(reply_text.encode("ascii"))
 
 
 def broadcast_messages() -> None:
@@ -349,19 +357,19 @@ def broadcast_messages() -> None:
                 data_crlf = bytearray(msg.raw_data)
                 if not msg.raw_data.endswith(b"\r\n"):
                     data_crlf.extend(b"\r\n")
-                conn.send(data_crlf)
+                conn.asend(data_crlf)
 
             if msg.type == MTYPE_AUTH and conn != msg.conn:
                 vtprint(f"sending MSG to {conn} (join broadcast)")
                 text = f"MSG FROM {SDNAME} IS {msg.displayname} joined.\r\n"
-                conn.send(text.encode("ascii"))
+                conn.asend(text.encode("ascii"))
 
 
 def broadcast_disconnect(dname: str|Connection) -> None:
     global connections
     text = f"MSG FROM {SDNAME} IS {dname} disconnected.\r\n"
     for conn in connections:
-        conn.send(text.encode("ascii"))
+        conn.asend(text.encode("ascii"))
 
 
 def broadcast_rename(old_name: str, new_name: str, who: Connection) -> None:
@@ -370,13 +378,13 @@ def broadcast_rename(old_name: str, new_name: str, who: Connection) -> None:
     for conn in connections:
         if conn == who:
             continue
-        conn.send(brmsg.encode("ascii"))
+        conn.asend(brmsg.encode("ascii"))
 
 
 def broadcast_bye() -> None:
     global connections
     for conn in connections:
-        conn.send(b"BYE\r\n")
+        conn.asend(b"BYE\r\n")
 
 
 def parse_many(data: bytes, conn: Connection) -> list[Message]:
