@@ -74,10 +74,8 @@ class Connection:
         if not self.active:
             return
         tprint(f"{self} disconnected.")
-        try:
-            self.sock.shutdown(socket.SHUT_RDWR)
-        except OSError as e:
-            tprint(f"OSError when calling shutdown: {e}")
+        if len(self.dname) > 0:
+            broadcast_disconnect(self.dname)
         self.sock.close()
         self.active = False
         self.sock = None
@@ -93,7 +91,7 @@ class Connection:
         """like `Connection.send`, but for err messages"""
         text_shortened = text[:1300]
         text_data = f"ERR FROM {dname} IS {text_shortened}...\r\n"
-        bin_data = text_data.encode("utf-8")
+        bin_data = text_data.encode("ascii")
         self.send(bin_data)
 
 
@@ -140,7 +138,7 @@ class Message:
             # sanitize also raw data
             if match_obj[1].lower() == SDNAME.lower():
                 new_raw_data = text.replace(match_obj[1], ALT_SDNAME)
-                new_raw_data = new_raw_data.encode("utf-8")
+                new_raw_data = new_raw_data.encode("ascii")
                 self.raw_data = new_raw_data
 
         # JOIN
@@ -177,7 +175,7 @@ class Message:
             # sanitize also raw data
             if match_obj[1].lower() == SDNAME.lower():
                 new_raw_data = text.replace(match_obj[1], ALT_SDNAME)
-                new_raw_data = new_raw_data.encode("utf-8")
+                new_raw_data = new_raw_data.encode("ascii")
                 self.raw_data = new_raw_data
 
         # ERR
@@ -267,12 +265,6 @@ def print_connections() -> None:
     tprint(f"there are {len(connections)} clients connected: {connections}")
 
 
-def add_disconnect_to_bq(conn: Connection) -> None:
-    global broad_q
-    msg = Message(b"BYE", conn)
-    broad_q.append(msg)
-
-
 def process_msg(msg: Message) -> None:
     """
     process the message, send an individual reply (REPLY) to `sock`
@@ -287,7 +279,7 @@ def process_msg(msg: Message) -> None:
         reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}"
         oknok = "OK" if AUTH_SUCCES else "NOK"
         whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
-        msg.conn.send(whole_reply.encode("utf-8"))
+        msg.conn.send(whole_reply.encode("ascii"))
         broad_q.append(msg)
 
     # send REPLY to JOIN
@@ -295,7 +287,7 @@ def process_msg(msg: Message) -> None:
         reply_text = f"Hi, {msg.conn.dname}! Successfully joined you " \
                      f"NOWHERE! This server has only one channel."
         whole_reply = f"REPLY OK IS {reply_text}\r\n"
-        msg.conn.send(whole_reply.encode("utf-8"))
+        msg.conn.send(whole_reply.encode("ascii"))
 
     # add MSG message to the broadcast queue
     if msg.type == MTYPE_MSG and "list-users" not in msg.content:
@@ -305,17 +297,11 @@ def process_msg(msg: Message) -> None:
     if msg.type == MTYPE_MSG and "list-users" in msg.content:
         reply_text = f"MSG FROM {SDNAME} IS There are {len(connections)} " \
                      f"clients connected: "
-        reply_text += ", ".join([conn.dname for conn in connections])
+        reply_text += ", ".join(
+            [conn.dname for conn in connections if conn.active]
+        )
         reply_text += "\r\n"
-        if msg.conn.sock is not None:
-            msg.conn.send(reply_text.encode("utf-8"))
-        else:
-            tprint(f"weird, socket for {msg.conn} is none? (2)")
-
-    # add BYE message to the broadcast queue
-    # (this results in the "dname disconnected" message to clients)
-    if msg.type == MTYPE_BYE:
-        broad_q.append(msg)
+        msg.conn.send(reply_text.encode("ascii"))
 
 
 def broadcast_messages() -> None:
@@ -339,14 +325,14 @@ def broadcast_messages() -> None:
             if msg.type == MTYPE_AUTH and conn != msg.conn:
                 vtprint(f"sending MSG to {conn} (join broadcast)")
                 text = f"MSG FROM {SDNAME} IS {msg.displayname} joined.\r\n"
-                conn.send(text.encode("utf-8"))
+                conn.send(text.encode("ascii"))
 
-            len_nonzero = len(msg.conn.dname) > 0
-            if msg.type == MTYPE_BYE and conn != msg.conn and len_nonzero:
-                vtprint(f"sending MSG to {conn} (disconnect broadcast)")
-                text = f"MSG FROM {SDNAME} IS " \
-                       f"{msg.conn.dname} disconnected.\r\n"
-                conn.send(text.encode("utf-8"))
+
+def broadcast_disconnect(dname: str|Connection) -> None:
+    global connections
+    for conn in connections:
+        text = f"MSG FROM {SDNAME} IS {dname} disconnected.\r\n"
+        conn.send(text.encode("ascii"))
 
 
 def broadcast_bye() -> None:
@@ -380,17 +366,14 @@ def try_recv(conn: Connection):
             data = conn.sock.recv(65536)
             if (len(data) == 0):
                 conn.set_inactive()
-                add_disconnect_to_bq(conn)
                 return
         except ConnectionResetError:  # recv
             tprint(f"ConnectionResetError with {conn}")
             conn.set_inactive()
-            add_disconnect_to_bq(conn)
             return
         except TimeoutError:  # recv
             tprint(f"TimeoutError with {conn}")
             conn.set_inactive()
-            add_disconnect_to_bq(conn)
             return
 
         # parse the data
