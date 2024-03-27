@@ -35,8 +35,15 @@
 
 #define TCP_LOOP_MS 10 /* todo: document this constant */
 
-/* reads data up to CRLF, returns dynamically allcoated buffer */
-static char *tcp_myrecv(conf_t *conf) {
+/* what to return in auth loop if connection ended */
+#define TCPCONN_ENDED 7
+
+/**
+ * reads data up to CRLF, returns dynamically allcoated buffer
+ * it returns NULL either when no data could be read (the connection ended)
+ * or when error occured (in that case, sets `err_occured` to true)
+ */
+static char *tcp_myrecv(conf_t *conf, bool *err_occured) {
 
     char *buf = mcal(TCP_READBUF_SIZE, 1);
     size_t write_idx = 0;
@@ -53,9 +60,16 @@ static char *tcp_myrecv(conf_t *conf) {
     while (not done) {
         char c;
         rc = recv(conf->sockfd, &c, 1, 0);
-        if (rc == -1) {
+        if (rc == -1) {  // error occured
             pinerror("couldn't recv");
             perror(ERRPRE "recv");
+            mfree(buf);
+            *err_occured = true;
+            return NULL;
+        }
+        if (rc == 0) {  // connection ended
+            pinerror("connection ended abruptly");
+            log(DEBUG, "connection ended abruptly");
             mfree(buf);
             return NULL;
         }
@@ -229,15 +243,23 @@ static int tcp_loop(conf_t *conf) {
         if (rc == 1 and events[0].data.fd == conf->sockfd) {
 
             log(DEBUG, "data came from network, todo: call recv");
-            char *reply_data = tcp_myrecv(conf);
-            if (reply_data == NULL) {
+            bool error_occurred = false;
+            char *reply_data = tcp_myrecv(conf, &error_occurred);
+            if (reply_data == NULL and error_occurred) {
                 pinerror("something went wrong");
                 log(ERROR, "something went wront with recv");
                 return ERR_INTERNAL;
             }
 
+            /* this is what happens when connection ends abruptly */
+            if (reply_data == NULL and not error_occurred) {
+                should_send_bye = false;
+                break;
+            }
+
             enum parse_result pr = PR_UNKNOWN;
             pr = tcp_parse_any(reply_data);
+            mfree(reply_data);
             if (pr == PR_BYE) {
                 should_send_bye = false;
                 break;
@@ -362,6 +384,8 @@ static int tcp_loop(conf_t *conf) {
 
 static int tcp_auth_loop(conf_t *conf ) {
     log(DEBUG, "auth loop started");
+    int rc = 0;
+    static_assert(TCPCONN_ENDED != ERR_INTERNAL, "constant collision");
 
     /* buffer for a line */
     size_t line_length = INIT_LINE_BUFSIZE;
@@ -407,14 +431,32 @@ static int tcp_auth_loop(conf_t *conf ) {
         tcp_send(conf, msg);
 
         /* wait for REPLY message */
-        char *reply_data = tcp_myrecv(conf);
+        error_occured = false;
+        char *reply_data = tcp_myrecv(conf, &error_occured);
+        if (reply_data == NULL and error_occured) {
+            pinerror("internal error");
+            log(ERROR, "something went wrong");
+            return ERR_INTERNAL;
+        }
+
+        /* if connection ended abruptly */
+        if (reply_data == NULL and not error_occured) {
+            msg_dtor(msg);
+            rc = 1;
+            break;
+        }
+
 
         /* parse reply (reply is printed by the parse fn) */
         enum parse_result pr = tcp_parse_any(reply_data);
-        if (pr == ERR_INTERNAL) {
+        if (pr == PR_ERR_INTERNAL) {
             pinerror("error parsing REPLY");
             log(ERROR, "error parsing REPLY");
             return ERR_INTERNAL;
+
+        } else if (pr == PR_BYE) {
+            done = true;
+            rc = TCPCONN_ENDED;
         } else if (pr != PR_REPLY_NOK and pr != PR_REPLY_OK) {
             pinerror("server sent unexpected message type");
             log(WARNING, "server sent unexpected message type");
@@ -430,12 +472,13 @@ static int tcp_auth_loop(conf_t *conf ) {
         mfree(reply_data);
         reply_data = NULL;
         msg_dtor(msg);
+        msg = NULL;
     }
 
     mfree(line);
     line = NULL;
     log(DEBUG, "auth loop finished");
-    return 0;
+    return rc;
 }
 
 int tcp_main(conf_t *conf) {
@@ -461,12 +504,14 @@ int tcp_main(conf_t *conf) {
     log(DEBUG, "connected to remote host");
 
     rc = tcp_auth_loop(conf);
-    if (rc != 0) {
+    if (rc == ERR_INTERNAL) {
         log(ERROR, "auth process went not well");
         return rc;
     }
 
-    rc = tcp_loop(conf);  // no need to check
+    if (rc == 0) {
+        rc = tcp_loop(conf);  // no need to check
+    }
 
     shutdown(conf->sockfd, SHUT_RDWR);
     close(conf->sockfd);
