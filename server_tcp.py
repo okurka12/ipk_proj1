@@ -324,7 +324,12 @@ def process_msg(msg: Message) -> None:
         vtprint(f"Sending REPLY with success={AUTH_SUCCES} to {msg.conn}")
         succ = "Successfully authenticated" if AUTH_SUCCES \
             else "Couldn't authenticate"
-        reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}"
+        reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}. "
+        reply_text += f"There are {len(connections)} clients present: "
+        reply_text += ", ".join(
+            [conn.dname for conn in connections if conn.active]
+        )
+        reply_text = reply_text[:1300]
         oknok = "OK" if AUTH_SUCCES else "NOK"
         whole_reply = f"REPLY {oknok} IS {reply_text}\r\n"
         msg.conn.send(whole_reply.encode("ascii"))
@@ -348,6 +353,7 @@ def process_msg(msg: Message) -> None:
         reply_text += ", ".join(
             [conn.dname for conn in connections if conn.active]
         )
+        reply_text = reply_text[:1300]
         reply_text += "\r\n"
         msg.conn.asend(reply_text.encode("ascii"))
 
