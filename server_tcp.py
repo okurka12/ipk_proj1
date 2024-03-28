@@ -99,6 +99,13 @@ class Connection:
             return
         except BlockingIOError as e:
             tprint(f"Connection.send: BlockingIOError with {self}: {e}")
+            return
+        except TimeoutError as e:
+            tprint(f"TimeoutError with {self}: {e}")
+            return
+        except Exception as e:
+            tprint(f"Other error with {self}: {e}. Didn't see this one yet.")
+            return
 
     def asend(self, data: bytes) -> None:
         """
