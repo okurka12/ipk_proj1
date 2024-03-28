@@ -5,10 +5,11 @@
 
 import socket
 import re
-from time import sleep
+from time import sleep, time
 import datetime as dt
 from typing import Set
 import traceback
+from math import floor
 
 from send_email import send_email
 # from server_udp import no_lf
@@ -272,6 +273,8 @@ class Message:
         return None
 
 
+# global variables
+server_started_ts = 0
 connections: Set[Connection] = set()
 
 # broadcast queue
@@ -318,13 +321,16 @@ def process_msg(msg: Message) -> None:
     process the message, send an individual reply (REPLY) to `sock`
     todo: send MSGs to all?
     """
+    global server_started_ts
 
     # send REPLY to AUTH
     if msg.type == MTYPE_AUTH:
         vtprint(f"Sending REPLY with success={AUTH_SUCCES} to {msg.conn}")
         succ = "Successfully authenticated" if AUTH_SUCCES \
             else "Couldn't authenticate"
-        reply_text = f"Hi, {msg.username}! {succ} you as {msg.displayname}. "
+        uptime_td = dt.timedelta(seconds=floor(time() - server_started_ts))
+        reply_text  = f"Hi, {msg.username}! {succ} you as {msg.displayname}. "
+        reply_text += f"Current uptime: {uptime_td}. "
         reply_text += f"There are {len(connections)} clients present: "
         reply_text += ", ".join(
             [conn.dname for conn in connections if conn.active]
@@ -493,7 +499,9 @@ def accept_loop() -> None:
 
 
 def main() -> None:
+    global server_started_ts
     try:
+        server_started_ts = time()
         accept_loop()
     except KeyboardInterrupt:
         # this is hard-coded here, run.sh depends on it!
