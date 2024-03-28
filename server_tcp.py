@@ -535,14 +535,18 @@ if __name__ == "__main__":
             exit()  # dont rerun if main returns successfully (on C-c)
         except Exception as e:
             tb = traceback.format_exc()
+            uptime_td = dt.timedelta(floor(seconds=time()-server_started_ts))
             tprint("fatal error occurred")
             tprint(tb)
+            tprint(f"uptime was {uptime_td}")
             send_email(
                 "ipk server restarted",
                 f"on {dt.datetime.now()}:\n"
                 f"an unexpected exception occured\n"
+                f"uptime was {uptime_td}\n"
                 f"the server should restart itself, no worries, "
-                f"here is the traceback: {tb}\n"
+                f"here is the traceback:\n"
+                f"{tb}\n"
             )
 
 
