@@ -44,6 +44,12 @@ CONFIRM_AUTH_FROM_DEFAULT_PORT = True
 # recommended value: True
 REPLY_SUCCESS = True
 
+# if true, when receiving JOIN, waits before sending REPLY
+DELAY_JOIN_REPLY = True
+
+# numebr of seconds to wait, see `DELAY_JOIN_REPLY`
+JOIN_REPLY_DELAY = 8
+
 # send this many MSG replies to MSG messages from client
 # setting this to more than 1 can enable you to test what your client
 # does when the same message (with the same id) comes more than once
@@ -295,6 +301,8 @@ def send_response(sock, retaddr, msg: Message) -> None:
     that can be either MSG, REPLY or BYE message
     """
     if msg.type == "AUTH" or msg.type == "JOIN":
+        if msg.type == "JOIN" and DELAY_JOIN_REPLY:
+            sleep(JOIN_REPLY_DELAY)  # dont send the reply immediately
         print(f"sending REPLY with result={1 if REPLY_SUCCESS else 0} "
                 f"to {msg.type} msg id={msg.id}")
         reply_text = create_reply_text_reply(msg, REPLY_SUCCESS)
