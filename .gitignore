@@ -13,3 +13,4 @@ valgrind.txt
 .vscode
 server_tcp_end.log
 check_port.sh
+send_email.py
