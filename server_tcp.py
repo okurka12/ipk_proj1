@@ -8,6 +8,9 @@ import re
 from time import sleep
 import datetime as dt
 from typing import Set
+import traceback
+
+from send_email import send_email
 # from server_udp import no_lf
 
 # when printing messages, print the original, not parsed form
@@ -512,5 +515,20 @@ def main() -> None:
     # tprint("exiting...")
 
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+            exit()  # dont rerun if main returns successfully (on C-c)
+        except Exception as e:
+            tb = traceback.format_exc()
+            tprint("fatal error occurred")
+            tprint(tb)
+            send_email(
+                "ipk server restarted",
+                f"on {dt.datetime.now()}:\n"
+                f"an unexpected exception occured\n"
+                f"the server should restart itself, no worries, "
+                f"here is the traceback: {tb}\n"
+            )
+
 
