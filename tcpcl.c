@@ -228,6 +228,7 @@ static int tcp_loop(conf_t *conf) {
     }
 
     bool done = false;
+    bool waiting_for_reply = false;
     struct epoll_event events[1];
     msg_t *msg = NULL;
     bool should_send_bye = true;
@@ -269,11 +270,17 @@ static int tcp_loop(conf_t *conf) {
             } else if (pr == PR_UNKNOWN) {
                 pinerror("server sent invalid data");
             }
+            if (pr == PR_REPLY_NOK or pr == PR_REPLY_OK) {
+                waiting_for_reply = false;
+            }
 
             /* either block again if stdin is blocking or don't if it's not */
             if (isatty(0)) continue;
 
         }  // if data came from network
+
+        /* dont read stdin if we need to get a REPLY first */
+        if (waiting_for_reply) continue;
 
         /* read one line */
         ssize_t getlinerc = mgetline(&line, &line_length, stdin);
@@ -320,6 +327,7 @@ static int tcp_loop(conf_t *conf) {
                 pinerror("couldn't send");
                 continue;
             }
+            waiting_for_reply = true;
 
         } else if (is_rename(line)) {
 
