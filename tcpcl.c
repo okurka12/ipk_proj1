@@ -38,6 +38,9 @@
 /* what to return in auth loop if connection ended */
 #define TCPCONN_ENDED 7
 
+/* what to return if ctrl d was pressed in auth loop */
+#define TCP_EOF_AUTH 11
+
 /**
  * reads data up to CRLF, returns dynamically allcoated buffer
  * it returns NULL either when no data could be read (the connection ended)
@@ -386,6 +389,7 @@ static int tcp_auth_loop(conf_t *conf ) {
     log(DEBUG, "auth loop started");
     int rc = 0;
     static_assert(TCPCONN_ENDED != ERR_INTERNAL, "constant collision");
+    static_assert(TCP_EOF_AUTH != ERR_INTERNAL, "constant collision");
 
     /* buffer for a line */
     size_t line_length = INIT_LINE_BUFSIZE;
@@ -407,6 +411,7 @@ static int tcp_auth_loop(conf_t *conf ) {
         }
         if (getlinerc == -1) {
             log(DEBUG, "EOF reached, stopping auth loop");
+            rc = TCP_EOF_AUTH;
             break;
         }
 
