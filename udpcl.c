@@ -425,7 +425,10 @@ static int udp_shell(conf_t *conf) {
 
         /* read one line (blocking) */
         read_chars = mgetline(&line, &line_length, stdin);
-        if (read_chars < 1) return 0;  // eof
+        if (read_chars < 1) {  // eof
+            mfree(line);
+            return 0;
+        }
         rstriplf(line);
         logf(DEBUG, "read %ld chars: '%s' + LF", read_chars, line);
 
