@@ -31,7 +31,7 @@
 #include "gexit.h"  // GE_SET_FD
 #include "tcp_parse.h"
 
-#define TCP_READBUF_SIZE 128000  /* todo: document this constant */
+#define TCP_READBUF_SIZE 512000  /* todo: document this constant */
 
 #define TCP_LOOP_MS 10 /* todo: document this constant */
 
@@ -94,7 +94,15 @@ static char *tcp_myrecv(conf_t *conf, bool *err_occured) {
             if (c == '\n') done = true;
             break;
         }
-    }
+
+        /* this shouldn't even happen, but better be safe */
+        if (write_idx > TCP_READBUF_SIZE - 1) {
+            mfree(buf);
+            log(WARNING, "buffer too small");
+            return NULL;  // caller will think the connection ended
+        }
+
+    }  // while not done
 
     return buf;
 }
