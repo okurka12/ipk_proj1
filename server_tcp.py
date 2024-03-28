@@ -73,13 +73,14 @@ class Connection:
             return f"{self.addr}:{self.port} (dname: {self.dname})"
         else:
             return f"{self.addr}:{self.port}"
-    def set_inactive(self) -> None:
+    def set_inactive(self, do_log=True) -> None:
         if not self.active:
             return
         self.active = False
         self.sock.close()
         self.sock = None
-        tprint(f"{self} disconnected.")
+        if do_log:
+            tprint(f"{self} disconnected.")
         if len(self.dname) > 0:
             broadcast_disconnect(self.dname)
     def send(self, data: bytes) -> None:
@@ -505,7 +506,7 @@ def main() -> None:
     sleep(0.1)
 
     for conn in connections:
-        conn.set_inactive()  # this will close the socket
+        conn.set_inactive(do_log=False)  # this will close the socket
 
     # dont use this, avoid sigpipe when piping to `tee` :)
     # tprint("exiting...")
