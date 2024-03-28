@@ -84,6 +84,12 @@ static inline void check_listener_args(listener_args_t *args) {
     assert(args->done_flag != NULL);
     assert(args->stop_flag != NULL);
     assert(args->server_sent_bye != NULL);
+    assert(args->waiting_for_reply != NULL);
+    assert(args->join_msgid != NULL);
+
+    /* values below START_MSGID are reserved (like for a blank
+    `join_msgid` variable) so having START_MSGID zero would be problematic */
+    static_assert(START_MSGID >= 1, "collision of constants");
 
     /* suppress warning if NDEBUG is defined */
     (void)args;
@@ -103,6 +109,8 @@ int udp_listener(void *args) {
     bool *stop_flag =            ((listener_args_t *)args)->stop_flag;
     bool *done_flag =            ((listener_args_t *)args)->done_flag;
     bool *server_sent_bye =      ((listener_args_t *)args)->server_sent_bye;
+    bool *waiting_for_reply =      ((listener_args_t *)args)->waiting_for_reply;
+    uint16_t *join_msgid =        ((listener_args_t *)args)->join_msgid;
 
     log(DEBUG, "listener starting");
 
@@ -191,6 +199,19 @@ int udp_listener(void *args) {
     } else {
         rc = udpm_mark(resp_id);
         if (rc != 0) break;  // on error
+    }
+
+    /* if this is a REPLY message, the sender thread is probably waiting for
+    it */
+    if (resp_mtype == MTYPE_REPLY and received_bytes >= 6) {
+        uint16_t ref_msgid = read_msgid(buf + 4);
+        mtx_lock(mtx);
+        if (ref_msgid == *join_msgid) {
+            *waiting_for_reply = false;
+            *join_msgid = START_MSGID - 1;  // see definition listener_args_t
+                                            // to see why this is done
+        }
+        mtx_unlock(mtx);
     }
 
     /* try to print the message or indicate a bad format */

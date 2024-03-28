@@ -40,6 +40,12 @@
 #include "msg.h"  // msg_t
 #include "shell.h"
 #include "udp_print_msg.h"  // str_isprint
+#include "sleep_ms.h"
+
+/* this is the interval how often will the the main sender thread check if
+the JOIN message got a REPLY. it wil start checking only after the JOIN
+message was confirmed (miliseconds) */
+#define REPLY_WAIT_INTERVAL 15
 
 
 int udp_set_rcvtimeo(conf_t *conf, unsigned int ms) {
@@ -89,6 +95,8 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
     bool listener_stop_flag = false;
     bool listener_done_flag = false;
     bool listener_server_sent_bye = false;
+    bool waiting_for_reply = false;
+    uint16_t join_msgid = START_MSGID - 1;  // see listener_args_t definition
     if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
         log(ERROR, "couldnt initialize lock");
         return ERR_INTERNAL;
@@ -100,7 +108,9 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         .save_port = false,
         .stop_flag = &listener_stop_flag,
         .done_flag = &listener_done_flag,
-        .server_sent_bye = &listener_server_sent_bye
+        .server_sent_bye = &listener_server_sent_bye,
+        .waiting_for_reply = &waiting_for_reply,
+        .join_msgid = &join_msgid
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {
@@ -213,9 +223,17 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
                 continue;
             }
 
-            /* fill additional parameters and send */
+            /* fill additional parameters  */
             msg->id = conf->cnt; conf->cnt += 1;
             msg->dname = conf->dname;
+
+            /* indicate we are waiting for REPLY */
+            mtx_lock(&listener_mtx);
+            join_msgid = msg->id;
+            waiting_for_reply = true;
+            mtx_unlock(&listener_mtx);
+
+            /* send */
             rc = udp_sender_send(msg, conf, cnfm_data);
 
             /* destroy message */
@@ -225,6 +243,15 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
             /* was sending successfull? */
             if (rc != 0) {
                 fprintf(stderr, ERRPRE "couldn't send" ERRSUF);
+            }
+
+            /* wait for reply (literally) */
+            bool done_waiting_for_reply = false;
+            while (not done_waiting_for_reply) {
+                mtx_lock(&listener_mtx);
+                done_waiting_for_reply = not waiting_for_reply;
+                mtx_unlock(&listener_mtx);
+                if (not done_waiting_for_reply) sleep_ms(REPLY_WAIT_INTERVAL);
             }
 
         } else if (is_rename(line)) {
@@ -351,6 +378,8 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
     bool listener_stop_flag = false;
     bool listener_done_flag = false;
     bool listner_server_sent_bye = false;
+    bool listener_waiting_for_reply = false;  // unused here
+    uint16_t listener_join_msgid = 0;  // unused here
     if (mtx_init(&listener_mtx, mtx_plain) == thrd_error) {
         log(ERROR, "couldnt initialize lock");
         return ERR_INTERNAL;
@@ -363,7 +392,9 @@ int udpsh_auth(conf_t *conf, msg_t *auth_msg, udp_cnfm_data_t *cnfm_data) {
         .auth_msg_id = auth_msg->id,
         .stop_flag = &listener_stop_flag,
         .done_flag = &listener_done_flag,
-        .server_sent_bye = &listner_server_sent_bye
+        .server_sent_bye = &listner_server_sent_bye,
+        .waiting_for_reply = &listener_waiting_for_reply,
+        .join_msgid = &listener_join_msgid
     };
     rc = thrd_create(&listener_thread_id, udp_listener, &listener_args);
     if (rc != thrd_success) {

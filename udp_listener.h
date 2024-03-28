@@ -48,6 +48,14 @@ typedef struct {
     /* listener ended because server sent BYE */
     bool *server_sent_bye;
 
+    /* listener sets this to false when it receives REPLY and it has ref_msgid
+    equal to `join_msgid` (another parameter of listener) */
+    bool *waiting_for_reply;
+
+    /* listener uses this to check if the REPLY is to a correct message and
+    when it is, it sets this to `START_MSGID` - 1 */
+    uint16_t *join_msgid;
+
     /* if this flag is true, waits for the CONFIRM and REPLY, saves
     source port of the response and returns (`mtx` is not unlocked in this
     case) */
