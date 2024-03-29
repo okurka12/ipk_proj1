@@ -535,7 +535,7 @@ if __name__ == "__main__":
             exit()  # dont rerun if main returns successfully (on C-c)
         except Exception as e:
             tb = traceback.format_exc()
-            uptime_td = dt.timedelta(floor(seconds=time()-server_started_ts))
+            uptime_td = dt.timedelta(seconds=floor(time()-server_started_ts))
             tprint("fatal error occurred")
             tprint(tb)
             tprint(f"uptime was {uptime_td}")
