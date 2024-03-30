@@ -11,8 +11,13 @@ from typing import Set
 import traceback
 from math import floor
 
-from send_email import send_email
+# from send_email import send_email
 # from server_udp import no_lf
+
+# this way, when someone write "exception" in their MSG, an exception is
+# raised
+# SET THIS TO FALSE IN PRODUCTION
+TEST_EXCEPTION = False
 
 # when printing messages, print the original, not parsed form
 PRINT_RAW = True
@@ -363,6 +368,13 @@ def process_msg(msg: Message) -> None:
         reply_text += "\r\n"
         msg.conn.asend(reply_text.encode("ascii"))
 
+    # for testing
+    c1 = msg.type == MTYPE_MSG
+    if c1:
+        c2 = "32533861684557exception16767781888439" in msg.content
+    if c1 and c2 and TEST_EXCEPTION:
+        raise Exception("test exception")
+
 
 def broadcast_messages() -> None:
     global connections
@@ -466,7 +478,11 @@ def try_recv(conn: Connection):
 
 def accept_loop() -> None:
     sock = socket.socket(FAMILY, SOCKTYPE)
-    sock.bind((BIND_IP, BIND_PORT))
+    try:
+        sock.bind((BIND_IP, BIND_PORT))
+    except OSError as e:  # address already in use
+        sock.close()
+        raise e
     tprint(f"started TCP server on {BIND_IP}:{BIND_PORT}")
 
     sock.listen()
@@ -529,24 +545,26 @@ def main() -> None:
     # tprint("exiting...")
 
 if __name__ == "__main__":
-    while True:
-        try:
-            main()
-            exit()  # dont rerun if main returns successfully (on C-c)
-        except Exception as e:
-            tb = traceback.format_exc()
-            uptime_td = dt.timedelta(seconds=floor(time()-server_started_ts))
-            tprint("fatal error occurred")
-            tprint(tb)
-            tprint(f"uptime was {uptime_td}")
-            send_email(
-                "ipk server restarted",
-                f"on {dt.datetime.now()}:\n"
-                f"an unexpected exception occured\n"
-                f"uptime was {uptime_td}\n"
-                f"the server should restart itself, no worries, "
-                f"here is the traceback:\n"
-                f"{tb}\n"
-            )
+    # while True:
+
+    try:
+        main()
+        exit()  # dont rerun if main returns successfully (on C-c)
+    except Exception as e:
+        tb = traceback.format_exc()
+        uptime_td = dt.timedelta(seconds=floor(time()-server_started_ts))
+        tprint("fatal error occurred")
+        tprint(tb)
+        tprint(f"uptime was {uptime_td}")
+        with open("server_tcp_exception.log", "a", encoding="utf-8") as f:
+            f.write(f"on {dt.datetime.now()}:\n")
+            f.write(f"an unexpected exception occured\n")
+            f.write(f"uptime was {uptime_td}\n")
+            f.write(f"here is the traceback:\n")
+            f.write(f"{tb}\n")
+
+    # sleep before retrying (port is in FIN_WAIT)
+    # tprint(f"sleeping 20 seconds before trying to restart the server")
+    # sleep(20.0)
 
 
