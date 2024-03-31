@@ -458,6 +458,7 @@ static int udp_shell(conf_t *conf) {
         read_chars = mgetline(&line, &line_length, stdin);
         if (read_chars < 1) {  // eof
             mfree(line);
+            mfree(cnfm_data.arr);
             return 0;
         }
         rstriplf(line);
