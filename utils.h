@@ -5,9 +5,6 @@
 **              **
 **   Created:   **
 **  2024-02-18  **
-**              **
-**    Edited:   **
-**  2024-02-19  **
 *****************/
 
 /* Logging and other useful macros */

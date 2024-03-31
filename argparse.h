@@ -5,13 +5,10 @@
 **              **
 **   Created:   **
 **  2024-02-20  **
-**              **
-**    Edited:   **
-**  2024-02-20  **
 *****************/
 
 /**
- * API for argparse: module to check + parse arguments
+ * API for argparse: module to check + parse program arguments (argv)
 */
 
 #include "ipk24chat.h"

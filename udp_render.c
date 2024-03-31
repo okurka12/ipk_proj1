@@ -5,9 +5,6 @@
 **              **
 **   Created:   **
 **  2024-02-25  **
-**              **
-**    Edited:   **
-**  2024-02-25  **
 *****************/
 
 #include <assert.h>
@@ -15,7 +12,7 @@
 
 #include "udp_render.h"
 #include "mmal.h"
-#include "ipk24chat.h"  // message types 
+#include "ipk24chat.h"  // message types
 #include "rwmsgid.h"  // write_msgid
 #include "utils.h"
 #include "msg.h"  // msg_t

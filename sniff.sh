@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Usage: ./sniff.sh HOST
+# Usage: ./sniff.sh tcp|udp HOST [port]
 #
 # sniffs on UDP + ICMP IPv4 packets, only prints those to/from HOST and only
 # prints NUM * 16 bytes of them

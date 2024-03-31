@@ -5,13 +5,10 @@
 **              **
 **   Created:   **
 **  2024-02-20  **
-**              **
-**    Edited:   **
-**  2024-02-20  **
 *****************/
 
 /**
- * argparse: module to check + parse arguments
+ * argparse.c - implementation of argparse.h
 */
 
 #include <stdio.h>

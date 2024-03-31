@@ -5,14 +5,13 @@
 **              **
 **   Created:   **
 **  2024-02-19  **
-**              **
-**    Edited:   **
-**  2024-02-19  **
 *****************/
 
 /**
  *
  * rwmsgid.c - read/write message id module API
+ *
+ * @note yes, I could've used htons and ntohs
  *
  */
 #include <stdint.h>
