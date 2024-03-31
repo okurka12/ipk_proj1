@@ -88,7 +88,8 @@ static inline void check_listener_args(listener_args_t *args) {
     assert(args->join_msgid != NULL);
 
     /* values below START_MSGID are reserved (like for a blank
-    `join_msgid` variable) so having START_MSGID zero would be problematic */
+    `join_msgid` variable) so having START_MSGID zero would be problematic,
+    also, udp_confirmer uses value zero to mark an empty spot */
     static_assert(START_MSGID >= 1, "collision of constants");
 
     /* suppress warning if NDEBUG is defined */
