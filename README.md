@@ -100,8 +100,14 @@ IPK24CHAT, like file transfer.
 ### Network
 
 On an application layer, we don't know nor care about how data gets to the
-other side, like what route it takes or what hardware network interface we use,
-we just need to make sure the data gets there sometime somehow.
+other side, like what route it takes or what hardware network interface we use.
+All this is provided to us by the transport layer of the TCP/IP stack. \[4\]
+For operating the transport layer, that is for sending application data
+(application layer), we utilize the socket API that the operating system
+provides for us. A socket is an abstraction from the rest of the network - we
+can imagine it like a door to the other side. Behind that door is the server
+application. \[5\]
+Only thing left for us to do is make sure the data gets there sometime somehow.
 
 In case of TCP, this is as simple as checking the return value of `send`. In
 TCP, `send` is most often successful, unless the connection was reset or
@@ -115,7 +121,7 @@ protocol. In case we don't receive a confirmation to our data in a given amount
 of time, we send them again. We try to do that only a given number of times
 until we receive the confirmation, and if we don't, we consider the connection
 finished. This poses a problem that we need to somehow *wait* for the
-confirmation data. \[4\]
+confirmation data. \[6\]
 
 Receiving data from the server poses the same problem as standard input, they
 can come at any unspecified point in time. Trying to read data from the network
@@ -487,7 +493,7 @@ Available at:
 https://www.bell-labs.com/usr/dmr/www/st.html
 
 \[3\]
-glibc maintainters.
+Glibc maintainters.
 *Buffering Concepts*
 \[online\]
 \[cited 2024-03-30\]
@@ -495,6 +501,23 @@ Available at:
 https://www.gnu.org/software/libc/manual/html_node/Buffering-Concepts.html
 
 \[4\]
+Department of Computer Science and Engineering, Univerity of Washington.
+*Transport Layer (TCP/UDP)*
+\[online\]
+\[cited 2024-03-31\]
+Available at:
+https://courses.cs.washington.edu/courses/cse461/20sp/slides/3-transport-apr3.pdf
+
+
+\[5\]
+Amarasinghe Saman; Chlipala Adam; Devadas Srini; Ernst Michael; Goldman Max; Guttag John; Jackson Daniel; Miller Rob; Rinard Martin and Solar-Lezama, Armando.
+*Sockets & Networking*
+\[online\]
+Fall 2019 \[cited 2024-03-31\]
+Available at:
+https://web.mit.edu/6.031/www/fa19/classes/23-sockets-networking/
+
+\[6\]
 IBM Corp.
 *C socket UDP client*
 \[online\]
