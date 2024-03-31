@@ -15,3 +15,6 @@ server_tcp_end.log
 check_port.sh
 send_email.py
 __pycache__
+
+# drawio
+*.bkp
