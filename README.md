@@ -102,6 +102,9 @@ IPK24CHAT, like file transfer.
 On an application layer, we don't know nor care about how data gets to the
 other side, like what route it takes or what hardware network interface we use.
 All this is provided to us by the transport layer of the TCP/IP stack. \[4\]
+
+![Transport layer](./doc_transport_layer.png "Transport layer")
+
 For operating the transport layer, that is for sending application data
 (application layer), we utilize the socket API that the operating system
 provides for us. A socket is an abstraction from the rest of the network - we
