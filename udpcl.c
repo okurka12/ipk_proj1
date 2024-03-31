@@ -176,8 +176,8 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         bool should_wait = true;
         while (epoll_fd != -1 and should_wait) {
             int epr = epoll_wait(epoll_fd, events, 1, UDP_STDIN_TIMEOUT_MS);
-            if (epr == 1) {
-                should_wait = false;
+            if (epr == 1) {  // stdin event
+                should_wait = false;  // done flag for the inner while loop
             }
             mtx_lock(&listener_mtx);
             if (listener_done_flag) {
