@@ -117,8 +117,8 @@ until we receive the confirmation, and if we don't, we consider the connection
 finished. This poses a problem that we need to somehow *wait* for the
 confirmation data. \[4\]
 
-Receiving data from the poses the same problem as standard input, they can
-come at any unspecified point in time. Trying to read data from the network
+Receiving data from the server poses the same problem as standard input, they
+can come at any unspecified point in time. Trying to read data from the network
 before they come would again result in blocking.
 
 ## Activity diagram, interesting source code sections
