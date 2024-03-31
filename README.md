@@ -474,8 +474,10 @@ Success: ok
 ==23082== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
 ```
 
-**None:** I again typed `reply ok is ok` into netcat and, like expected,
-last line of the netcat output was `bYe`.
+**Note:** I again typed `reply ok is ok` into netcat and, like expected,
+last line of the netcat output was `bYe`. Also, there are 3 file descriptors
+open at exit, which is expected. These are standart input, error and output.
+These are usually not closed, depending on the C runtime configuration.
 
 ## Bibliography
 
