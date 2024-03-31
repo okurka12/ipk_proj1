@@ -138,6 +138,7 @@ int main(int argc, char *argv[]) {
     gexit(GE_SET_CONFP, &conf);
 
     if (not args_ok(argc, argv, &conf)) {
+        pinerror("bad arguments or an other internal error");
         log(ERROR, "bad arguments (or no memory?)");
         rc = ERR_BAD_ARG;
         goto cleanup;
