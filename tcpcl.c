@@ -158,7 +158,7 @@ static int tcp_connect(conf_t *conf) {
  * send msg to conf->sockfd
  * return 0 on success
 */
-int tcp_send(conf_t *conf, const msg_t *msg) { /* todo */
+int tcp_send(conf_t *conf, const msg_t *msg) {
     logf(DEBUG, "sending %s msg id %hu", mtype_str(msg->type), msg->id);
     (void)msg;
     assert(conf->sockfd != -1);
