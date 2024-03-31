@@ -5,16 +5,13 @@
 ##              ##
 ##  Created:    ##
 ##  2024-02-18  ##
-##              ##
-##  Edited:     ##
-##  2024-02-25  ##
 ##################
 
 # log level (DEBUG, INFO, WARNING, ERROR, FATAL)
 LOGLEVEL=-DLOGLEVEL=DEBUG
 
 # uncomment this to disable all logging
-# DNDEBUG=-DNDEBUG
+DNDEBUG=-DNDEBUG
 
 # uncomment this to enable adress sanitizer
 # ASAN=-fsanitize=address
@@ -26,7 +23,7 @@ RESULT_BINARY=ipk24chat-client
 # CC=/usr/bin/gcc-10
 CC=gcc
 
-CFLAGS=-Wall -Wextra -pedantic -g -std=c11 -Og $(LOGLEVEL) $(DNDEBUG) $(ASAN)
+CFLAGS=-Wall -Wextra -pedantic -g -std=c11 -O3 $(LOGLEVEL) $(DNDEBUG) $(ASAN)
 
 LDFLAGS=$(ASAN) -lpthread
 
@@ -38,7 +35,7 @@ ALL: $(RESULT_BINARY)
 
 udpcl.o: udpcl.c udpcl.h ipk24chat.h utils.h rwmsgid.h gexit.h mmal.h \
 udp_render.h udp_confirmer.h udp_listener.h msg.h shell.h udp_sender.h \
-udp_print_msg.h
+udp_print_msg.h sleep_ms.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rwmsgid.o: rwmsgid.c rwmsgid.h
@@ -52,7 +49,8 @@ udp_print_msg.h tcpcl.h
 argparse.o: argparse.c argparse.h ipk24chat.h utils.h mmal.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-gexit.o: gexit.c ipk24chat.h gexit.h utils.h msg.h udp_sender.h udp_confirmer.h
+gexit.o: gexit.c ipk24chat.h gexit.h utils.h msg.h udp_sender.h \
+udp_confirmer.h tcpcl.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 mmal.o: mmal.c mmal.h gexit.h
@@ -90,7 +88,7 @@ udp_marker.o: udp_marker.c mmal.h udp_marker.h utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 tcpcl.o: tcpcl.c ipk24chat.h tcpcl.h msg.h utils.h shell.h mmal.h \
-tcp_render.h gexit.h
+tcp_render.h gexit.h tcp_parse.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 tcp_render.o: tcp_render.c ipk24chat.h mmal.h msg.h utils.h
