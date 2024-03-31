@@ -42,6 +42,10 @@
 #include "udp_print_msg.h"  // str_isprint
 #include "sleep_ms.h"
 
+/* while blocking for stdin, check if listener hasn't finished every this many
+miliseconds */
+#define UDP_STDIN_TIMEOUT_MS 50
+
 /* this is the interval how often will the the main sender thread check if
 the JOIN message got a REPLY. it wil start checking only after the JOIN
 message was confirmed (miliseconds) */
@@ -171,7 +175,7 @@ int udpsh_loop_endlessly(conf_t *conf, udp_cnfm_data_t *cnfm_data) {
         finished yet (if stdin is a file, this is never performed) */
         bool should_wait = true;
         while (epoll_fd != -1 and should_wait) {
-            int epr = epoll_wait(epoll_fd, events, 1, 100 *SH_STDIN_TIMEOUT_MS);
+            int epr = epoll_wait(epoll_fd, events, 1, UDP_STDIN_TIMEOUT_MS);
             if (epr == 1) {
                 should_wait = false;
             }

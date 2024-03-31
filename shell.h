@@ -23,9 +23,6 @@
 matter all that much) */
 #define INIT_LINE_BUFSIZE 1024
 
-/* while blocking for stdin, check if listener hasn't finished every this many
-miliseconds */
-#define SH_STDIN_TIMEOUT_MS 10  // todo: document this constant
 
 /**
  * @brief Parses /auth command and returns corresponding msg_t
