@@ -55,7 +55,7 @@ hopeless and print an error that the message couldn't be sent
 *Note that arguments are parsed using the POSIX `getopt` library, therefore,
 if an option is specified more than once, the last one is used.*
 - *Example: `ipk24chat-client -t udp -s localhost -r 20 -r 5` will mean
-the program takes `-r 5`.* \[1\]
+the program takes `-r 5`.* [1]
 
 ## Theoretical background
 
@@ -69,7 +69,7 @@ The goals of this client application are following:
 - send user's data to the server
 
 The user interface is set up via standard streams
-\[2\] - standard output, standard
+[2] - standard output, standard
 input and standard error stream.
 
 ### Standard output and standard error
@@ -77,7 +77,7 @@ input and standard error stream.
 There's little to worry about regarding the
 output - the output is line buffered, so each time a message is outputted,
 the user sees it right away, assuming he has the standard output connected
-to an interactive device (ie. a terminal). \[3\]
+to an interactive device (ie. a terminal). [3]
 
 I'm assuming that if the user redirects the output to a file, he won't be
 examining it's contents right away, even though that's not impossible:
@@ -101,7 +101,7 @@ IPK24CHAT, like file transfer.
 
 On an application layer, we don't know nor care about how data gets to the
 other side, like what route it takes or what hardware network interface we use.
-All this is provided to us by the transport layer of the TCP/IP stack. \[4\]
+All this is provided to us by the transport layer of the TCP/IP stack. [4]
 
 ![Transport layer](./doc_transport_layer.png "Transport layer")
 
@@ -109,7 +109,7 @@ For operating the transport layer, that is for sending application data
 (application layer), we utilize the socket API that the operating system
 provides for us. A socket is an abstraction from the rest of the network - we
 can imagine it like a door to the other side. Behind that door is the server
-application. \[5\]
+application. [5]
 Only thing left for us to do is make sure the data gets there sometime somehow.
 
 In case of TCP, this is as simple as checking the return value of `send`. In
@@ -124,7 +124,7 @@ protocol. In case we don't receive a confirmation to our data in a given amount
 of time, we send them again. We try to do that only a given number of times
 until we receive the confirmation, and if we don't, we consider the connection
 finished. This poses a problem that we need to somehow *wait* for the
-confirmation data. \[6\]
+confirmation data. [6]
 
 Receiving data from the server poses the same problem as standard input, they
 can come at any unspecified point in time. Trying to read data from the network
@@ -481,52 +481,52 @@ These are usually not closed, depending on the C runtime configuration.
 
 ## Bibliography
 
-\[1\]
+[1]
 Looijaard Frodo.
 *getopt - parse command options*
-\[Computer program\]
-December, 2023 \[cited 2024-03-31\]
+[Computer program]
+December, 2023 [cited 2024-03-31]
 Available at:
 https://man7.org/linux/man-pages/man3/getopt.3.html
 
-\[2\]
+[2]
 Ritchie, Dennis M.
 *A Stream Input-Output System*
-\[online\]
-October, 1984 \[cited 2024-03-30\]
+[online]
+October, 1984 [cited 2024-03-30]
 Available at:
 https://www.bell-labs.com/usr/dmr/www/st.html
 
-\[3\]
+[3]
 Glibc maintainters.
 *Buffering Concepts*
-\[online\]
-\[cited 2024-03-30\]
+[online]
+[cited 2024-03-30]
 Available at:
 https://www.gnu.org/software/libc/manual/html_node/Buffering-Concepts.html
 
-\[4\]
+[4]
 Department of Computer Science and Engineering, Univerity of Washington.
 *Transport Layer (TCP/UDP)*
-\[online\]
-\[cited 2024-03-31\]
+[online]
+[cited 2024-03-31]
 Available at:
 https://courses.cs.washington.edu/courses/cse461/20sp/slides/3-transport-apr3.pdf
 
 
-\[5\]
+[5]
 Amarasinghe Saman; Chlipala Adam; Devadas Srini; Ernst Michael; Goldman Max; Guttag John; Jackson Daniel; Miller Rob; Rinard Martin and Solar-Lezama, Armando.
 *Sockets & Networking*
-\[online\]
-Fall 2019 \[cited 2024-03-31\]
+[online]
+Fall 2019 [cited 2024-03-31]
 Available at:
 https://web.mit.edu/6.031/www/fa19/classes/23-sockets-networking/
 
-\[6\]
+[6]
 IBM Corp.
 *C socket UDP client*
-\[online\]
-April, 2023 \[cited 2024-03-31\]
+[online]
+April, 2023 [cited 2024-03-31]
 Available at:
 https://www.ibm.com/docs/en/zos/3.1.0?topic=programs-c-socket-udp-client
 
