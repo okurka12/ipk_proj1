@@ -361,6 +361,21 @@ where `PR_MSG`, `PR_ERR`, `PR_REPLY_NOK`, `PR_REPLY_OK` and `PR_BYE` are
 the expected values of a predefined enum type, which the parse function
 returns.
 
+Also, `test` is a macro that uses `assert` to assert that the string is
+evaluated as the expected message type, like `PR_MSG`.
+
+Here is the otput from the terminal (both standard output and error):
+
+```
+./test_tcp_parse.bin
+server: hello, this is a message
+ERR FROM server: hello, this is an error
+Failure: yo this is a unsuccessful reply
+Success: yo this is a successful reply
+```
+
+As you can see, everything is printed correctly and no assertion failed.
+
 ### test_various
 
 The `test_various.txt` file contains a few valid lines and few invalid lines.
@@ -529,5 +544,3 @@ IBM Corp.
 April, 2023 [cited 2024-03-31]
 Available at:
 https://www.ibm.com/docs/en/zos/3.1.0?topic=programs-c-socket-udp-client
-
-
