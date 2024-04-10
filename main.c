@@ -53,7 +53,8 @@ int resolve_hostname(conf_t *conf) {
     hints.ai_family = AF_INET;  // IPv4
     hints.ai_socktype = SOCK_DGRAM;  // UDP
     if (getaddrinfo(conf->addr, NULL, &hints, &result) != 0) {
-        perror("getaddrinfo");
+        perror(ERRPRE "getaddrinfo");
+        fprintf(stderr, ERRPRE "couldn't resolve host %s" ERRSUF, conf->addr);
         logf(ERROR, "getaddrinfo couldn't resolve hostname '%s'", conf->addr);
         return 1;
     }
