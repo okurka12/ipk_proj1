@@ -8,7 +8,7 @@
 ##################
 
 # log level (DEBUG, INFO, WARNING, ERROR, FATAL)
-LOGLEVEL=-DLOGLEVEL=DEBUG
+# LOGLEVEL=-DLOGLEVEL=WARNING
 
 # uncomment this to disable all logging
 DNDEBUG=-DNDEBUG
@@ -23,7 +23,7 @@ RESULT_BINARY=ipk24chat-client
 # CC=/usr/bin/gcc-10
 CC=gcc
 
-CFLAGS=-Wall -Wextra -pedantic -g -std=c11 -O3 $(LOGLEVEL) $(DNDEBUG) $(ASAN)
+CFLAGS=-Wall -Wextra -pedantic -std=c11 -O3 $(LOGLEVEL) $(DNDEBUG) $(ASAN)
 
 LDFLAGS=$(ASAN) -lpthread
 

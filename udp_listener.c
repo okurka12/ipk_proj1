@@ -182,7 +182,7 @@ int udp_listener(void *args) {
         char response_data[3] = { MTYPE_CONFIRM, 0, 0 };
         write_msgid(response_data + 1, resp_id);
         ssize_t sendto_result =
-            sendto(conf->sockfd, response_data, 3, 0, sa, AS_SIZE);
+            sendto(conf->sockfd, response_data, 3, 0, (SSA *)&respaddr, respaddr_len);
         if (sendto_result == -1) {
             perror("sendto failed");
             log(ERROR, "sendto failed");

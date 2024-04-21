@@ -82,6 +82,10 @@
 `STR(x)` will be `"5"`) */
 #define STR(x) STRSTR(x)
 
+/* author to print in help messages (if you want to print no author, set this
+to empty string) */
+#define AUTHOR LF "Author: Vit Pavlik, 2024" LF
+
 #define USAGE "Usage: ipk24chat-client -t tcp|udp -s ADDRESS [-p PORT] " \
 "[-d TIMEOUT] [-r RETRIES] [-h]"
 
@@ -93,7 +97,7 @@
          STR(DEFAULT_TO) ")" LF \
 "  -r    Maximum number of UDP retransmissions (default is " \
          STR(DEFAULT_RETRIES) ")" LF \
-"  -h    Print help and exit"
+"  -h    Print help and exit" AUTHOR
 
 #define CMD_HELP_TXT "Available commands:" LF \
 "  /auth username secret displayname -- authenticate if not authenticated " \
@@ -107,7 +111,7 @@
 "  channel_id:  " STR(MAX_CHID_LEN) " characters" LF \
 "Other inputs that don't represent any known command will be " LF \
 "interpreted as a message and a message can be no longer than " \
-STR(MAX_MSGCONT_LEN) " characters" LF
+STR(MAX_MSGCONT_LEN) " characters" LF AUTHOR
 
 
 /* global client lock (for accessing `conf`, `cnfm_data`, or `gexit`) */
