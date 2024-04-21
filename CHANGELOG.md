@@ -17,6 +17,14 @@ the functions write to the target
 the program carries on like nothing happended)
 - reduce the number of `malloc` calls by `udp_print_msg` module
 
+## [1.0.1] - 2024-04-22
+
+Also known as `Version: 663550c9d1db476e5889dda1935c38c895528475`
+
+### Fixed
+
+- UDP now sends CONFIRM to a REPLY to the dynamic port, not the default port
+
 ## [1.0.0] - 2024-04-01
 
 This is my final version of the project I'll be submitting.
