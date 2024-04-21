@@ -86,6 +86,10 @@
 to empty string) */
 #define AUTHOR LF "Author: Vit Pavlik, 2024" LF
 
+/* this needs to be manually changed but still better than not knowing to
+whom i sent what*/
+#define VERSION "Version: 663550c9d1db476e5889dda1935c38c895528475" LF
+
 #define USAGE "Usage: ipk24chat-client -t tcp|udp -s ADDRESS [-p PORT] " \
 "[-d TIMEOUT] [-r RETRIES] [-h]"
 
@@ -97,7 +101,7 @@ to empty string) */
          STR(DEFAULT_TO) ")" LF \
 "  -r    Maximum number of UDP retransmissions (default is " \
          STR(DEFAULT_RETRIES) ")" LF \
-"  -h    Print help and exit" AUTHOR
+"  -h    Print help and exit" AUTHOR VERSION
 
 #define CMD_HELP_TXT "Available commands:" LF \
 "  /auth username secret displayname -- authenticate if not authenticated " \
