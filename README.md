@@ -3,6 +3,8 @@
 This is a client application for the IPK24CHAT protocol. It came into being
 as my solution to the first assignment of the IPK course.
 
+See the assignment here: https://git.fit.vutbr.cz/NESFIT/IPK-Projects-2024/src/branch/master/Project%201
+
 Author: Vit Pavlik (`xpavli0a`)
 
 Date: March 31, 2024
