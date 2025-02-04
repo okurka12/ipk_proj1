@@ -385,7 +385,7 @@ static int tcp_loop(conf_t *conf) {
     }  // while not done
 
     if (should_send_bye) {
-        msg_t bye_msg = { .type = MTYPE_BYE };
+        msg_t bye_msg = { .type = MTYPE_BYE, .dname = conf->dname };
         rc = tcp_send(conf, &bye_msg);
         if (rc != 0) log(ERROR, "couldn't send bye");
     }

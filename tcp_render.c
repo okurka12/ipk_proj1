@@ -60,7 +60,9 @@ char *tcp_render(const msg_t *msg) {
             break;
 
         case MTYPE_BYE:
-            strcpy(output, "bYe\r\n");
+            assert(msg->dname != NULL);  // ipk25chat
+            rc = snprintf(output, TCP_RENDER_BUFSIZE, "bYe frOm %s\r\n",
+                msg->dname);
             break;
 
         default:
