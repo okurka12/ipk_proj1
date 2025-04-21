@@ -493,7 +493,7 @@ Success: ok
 
 **Note:** I again typed `reply ok is ok` into netcat and, like expected,
 last line of the netcat output was `bYe`. Also, there are 3 file descriptors
-open at exit, which is expected. These are standart input, error and output.
+open at exit, which is expected. These are standard input, error and output.
 These are usually not closed, depending on the C runtime configuration.
 
 ## Bibliography
